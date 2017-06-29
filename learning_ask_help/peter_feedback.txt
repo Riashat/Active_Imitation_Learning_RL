@@ -1,0 +1,21 @@
+OracleGatingPolicy:
+     self.termination_function
+     self.oracle_policy
+     self.novice_policy
+     def get_action(...):
+          (1 - round(self.termination_function(observations))) * self.oracle_policy + self.novice_policy *round(self.termination_function)
+     def dist_info_sym(..):
+     
+    def dist_info_sym(self, obs_var, state_info_vars=None):
+        mean_var, std_param_var = tf.stop_gradient(L.get_output([self.novice_policy._l_mean, self.novicy_policy_l_std_param], obs_var))
+        mean_var_oracle, std_param_var_oracle = tf.stop_gradient (.....)
+        if self.min_std_param is not None:
+            std_param_var = tf.maximum(std_param_var, self.min_std_param)
+        if self.std_parametrization == 'exp':
+            log_std_var = std_param_var
+        elif self.std_parametrization == 'softplus':
+            log_std_var = tf.log(tf.log(1. + tf.exp(std_param_var)))
+        else:
+            raise NotImplementedError
+        mean_var = (1-self.terimation_policy) * self.mean_Var_oracle 
+        return dict(mean=mean_var, log_std=log_std_var)

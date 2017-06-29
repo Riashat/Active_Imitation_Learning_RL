@@ -1,0 +1,96 @@
+TRPO Implementation :
+
+#Main sampling process under batch_polopt.py
+
+##key:
+class BatchPolopt(RLAlgorithm):
+    """
+    Base class for batch sampling-based policy optimization methods.
+    This includes various policy gradient methods like vpg, npg, ppo, trpo, etc.
+    """
+
+  	--- this is the main function which implements the sampling procedures
+  	for the sampling based policy gradient methods
+
+
+
+
+
+
+
+I haven’t had much success with the ConvPolicy
+
+[6:35] 
+but you can try the DiscreteMLPPolicy
+
+[6:35] 
+but the state space is extremely large
+
+[6:35] 
+so it’s a bit terrible
+
+[6:35] 
+you need to run it through a downscaling wrapper
+
+[6:35] 
+or something of the sort
+
+[6:35] 
+or alternatively run it through some Conv/Max pooling layers
+
+[6:36] 
+so sorry, in RLLAB you can use
+
+[6:36] 
+CategoricalConvPolicy
+
+[6:36] 
+or CategoricalMlpPolicy
+
+[6:36] 
+with the Atari envs
+
+[6:36] 
+if you want wrappers to downsize the pixel space first
+
+[6:36] 
+you can check out
+
+[6:37] 
+https://github.com/Breakend/gym-extensions-multitask/blob/master/gym_extensions/wrappers/observation_transform_wrapper.py
+
+transformers = [SimpleNormalizePixelIntensitiesTransformer(), ResizeImageTransformer(fraction_of_current_size=.35)]
+        config[“transformers”] = transformers
+        transformed_env = ObservationTransformWrapper(gymenv, transformers)
+
+
+
+
+### Peter other TRPO code bases
+i don’t think really anything significant
+
+[12:21] 
+https://github.com/Breakend/gym-extensions
+GitHub
+Breakend/gym-extensions
+gym-extensions - This repo is intended as an extension for OpenAI Gym for continuous domains. This means Mujoco or Roboschool envs. Pull requests are welcome.
+ 
+
+[12:21] 
+that’s basically the same code
+
+[12:22] 
+in the multitask_benchmarks folder
+
+[12:22] 
+and then https://github.com/Breakend/ExperimentsInIRL
+GitHub
+Breakend/ExperimentsInIRL
+Contribute to ExperimentsInIRL development by creating an account on GitHub.
+ 
+
+[12:22] 
+is IRL stuff that uses TRPO
+
+[12:22] 
+but it’s super messy right now
