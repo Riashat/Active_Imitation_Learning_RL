@@ -1,12 +1,15 @@
 # from ddpg_tensorflow.ddpg import DDPG
 from learning_active_learning.learning_ask_help.DDPG.oracle_ddpg import DDPG as Oracle_DDPG
-from learning_active_learning.learning_ask_help.DDPG.agent_ddpg_meta_policy import DDPG as Agent_DDPG
+from learning_active_learning.learning_ask_help.DDPG.agent_ddpg_active_rl import DDPG as Agent_DDPG
 
 from rllab.envs.box2d.cartpole_env import CartpoleEnv
 from rllab.envs.normalized_env import normalize
 from rllab.misc.instrument import stub, run_experiment_lite
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from sandbox.rocky.tf.policies.deterministic_mlp_policy import DeterministicMLPPolicy
+
+from learning_active_learning.learning_ask_help.DDPG.hierarchical_deterministic_mlp_policy import LayeredDeterministicMLPPolicy
+from learning_active_learning.learning_ask_help.DDPG.agent_action_selection import AgentStrategy
 
 #if using the categorial policy to get action probabilities
 # doesnt work for continuous control MuJoCo environments
@@ -49,10 +52,11 @@ else:
 
 env = TfEnv(normalize(gymenv))
 es = OUStrategy(env_spec=env.spec)
+agent_strategy = AgentStrategy(env_spec=env.spec)
 
 
 ## agent policy
-policy = DeterministicMLPPolicy(
+policy = LayeredDeterministicMLPPolicy(
     env_spec=env.spec,
     name="policy",
     # The neural network policy should have two hidden layers, each with 32 hidden units.
@@ -102,8 +106,6 @@ Debugging tool
 
 
 
-
-
 for b in range(len(batch_size_values)): 
     
     for e in range(num_experiments):
@@ -140,7 +142,7 @@ for b in range(len(batch_size_values)):
             snapshot_mode="last",
             # Specifies the seed for the experiment. If this is not provided, a random seed
             # will be used
-            exp_name="Meta-Controller/" + "Oracle_DDPG/",
+            exp_name="Active_RL/" + "Oracle_DDPG/",
             seed=1,
             plot=args.plot,
         )
@@ -154,7 +156,7 @@ for b in range(len(batch_size_values)):
             env=env,
             policy=policy,
             oracle_policy=oracle_policy, 
-            es=es,
+            agent_strategy=agent_strategy,
             qf=qf,
             batch_size=batch_size_values[b],
             max_path_length=env.horizon,
@@ -179,7 +181,7 @@ for b in range(len(batch_size_values)):
             snapshot_mode="last",
             # Specifies the seed for the experiment. If this is not provided, a random seed
             # will be used
-            exp_name="Meta-Controller/" + "DDPG/",
+            exp_name="Active_RL/" + "DDPG/",
             seed=1,
             plot=args.plot,
         )

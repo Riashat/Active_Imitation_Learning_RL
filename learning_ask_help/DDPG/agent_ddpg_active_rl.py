@@ -30,7 +30,7 @@ class DDPG(RLAlgorithm):
             policy,
             oracle_policy,
             qf,
-            es,
+            agent_strategy,
             batch_size=32,
             n_epochs=200,
             epoch_length=1000,
@@ -86,7 +86,7 @@ class DDPG(RLAlgorithm):
         self.policy = policy
         self.oracle_policy = oracle_policy
         self.qf = qf
-        self.es = es
+        self.agent_strategy = agent_strategy
         self.batch_size = batch_size
         self.n_epochs = n_epochs
         self.epoch_length = epoch_length
@@ -151,7 +151,6 @@ class DDPG(RLAlgorithm):
 
             self.initialize_uninitialized(sess)
 
-
             # This seems like a rather sequential method
             pool = SimpleReplayPool(
                 max_pool_size=self.replay_pool_size,
@@ -173,8 +172,6 @@ class DDPG(RLAlgorithm):
                 action_dim=self.env.action_space.flat_dim,
                 replacement_prob=self.replacement_prob,
             )
-
-
 
             self.start_worker()
 
@@ -201,6 +198,7 @@ class DDPG(RLAlgorithm):
                 logger.log("Training started")
                 train_qf_itr, train_policy_itr = 0, 0
 
+                binary_action = tf.Variable(tf.random_normal([0]), name="binary_action")
 
                 for epoch_itr in pyprind.prog_bar(range(self.epoch_length)):
                     # Execute policy
@@ -209,7 +207,7 @@ class DDPG(RLAlgorithm):
                         # last state and observation will be ignored and not added
                         # to the replay pool
                         observation = self.env.reset()
-                        self.es.reset()
+                        self.agent_strategy.reset()
                         sample_policy.reset()
                         self.es_path_returns.append(path_return)
                         path_length = 0
@@ -218,31 +216,31 @@ class DDPG(RLAlgorithm):
                     else:
                         initial = False
                     
+                    """
+                    Output of agent_action
+                    - either continuous action - mu(s) OR 
+                    - discrete action - beta(s)
+                    - OR should output BOTH mu(s) continuous action and discrete beta action (0 or 1) --- appending the action space
+                    """
 
-                    """
-                    use a sigma gating function - for every state, decide whether to
-                    ask the oracle or not
-                    """
-                    #################
-                    agent_action = self.es.get_action(itr, observation, policy=sample_policy)  # qf=qf)
-                    oracle_action = self.get_oracle_action(itr, observation, policy=oracle_sample_policy)
-
-                    """
-                    Meta-Policy - policy to choose whether to use agent or oracle policy
-                    """
                     import pdb; pdb.set_trace()
-                    sigma = round(sess.run([self.gating_function], feed_dict={self.obs : observation.reshape(1,-1)})[0][0] )# hard gate for now
-                    action =  sigma * oracle_action + (1 - sigma) * agent_action
 
-                    ###############
+                    agent_action, binary_action = self.agent_strategy.get_action(itr, observation, policy=sample_policy)  # qf=qf)
 
-                    #### usual ddpg step for taking action
-                    #action = self.es.get_action(itr, observation, policy=sample_policy)  # qf=qf)
+                    """
+                    ASSUME: Sigma is the correct value here - need to fix this!
+                    """
+                    sigma = round(sess.run([binary_action], feed_dict={self.obs:observation.reshape(1,-1)})[0][0] )
+                    sigma = 0
+
+                    oracle_action = self.get_oracle_action(itr, observation, policy=oracle_sample_policy)
+                    action = sigma * agent_action + (1 - sigma) * oracle_action
 
                     next_observation, reward, terminal, _ = self.env.step(action)
                     path_length += 1
                     path_return += reward
 
+                    ####add all the sames to the same replay buffer
 
                     if not terminal and path_length >= self.max_path_length:
                         terminal = True
@@ -359,11 +357,9 @@ class DDPG(RLAlgorithm):
                           input_var=input_to_gates,
                           input_shape=tuple(input_to_gates.get_shape().as_list()[1:]))
 
-
         #gating_func_training = L.ReshapeLayer(gating_func_net.output_layer, shape=(-1,), name="gating_func_flat")
         self.gating_function = tf.reshape(gating_func_net.output, [-1])#gating_func_training.L.get_output #tf.reshape(gating_func_net.output, [-1])
 
-        print ("Printing Gating Function", self.gating_function)
 
         # y need to be computed first
         obs_oracle = self.env.observation_space.new_tensor_variable(
@@ -610,7 +606,7 @@ class DDPG(RLAlgorithm):
             policy=self.policy,
             target_qf=self.opt_info["target_qf"],
             target_policy=self.opt_info["target_policy"],
-            es=self.es,
+            es=self.agent_strategy,
         )
 
 
