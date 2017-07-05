@@ -96,6 +96,7 @@ class DDPG(RLAlgorithm):
         self.discount = discount
         self.max_path_length = max_path_length
         self.qf_weight_decay = qf_weight_decay
+
         self.qf_update_method = \
             FirstOrderOptimizer(
                 update_method=qf_update_method,
@@ -103,16 +104,26 @@ class DDPG(RLAlgorithm):
             )
         self.qf_learning_rate = qf_learning_rate
         self.policy_weight_decay = policy_weight_decay
+
+
         self.policy_update_method = \
             FirstOrderOptimizer(
                 update_method=policy_update_method,
                 learning_rate=policy_learning_rate,
             )
+
         self.gating_func_update_method = \
             FirstOrderOptimizer(
                 update_method='adam',
                 learning_rate=policy_learning_rate,
             )
+
+        # self.policy_func_update_method = \
+        #     FirstOrderOptimizer(
+        #         update_method='adam',
+        #         learning_rate=policy_learning_rate,
+        #     )        
+            
         self.policy_learning_rate = policy_learning_rate
         self.policy_updates_ratio = policy_updates_ratio
         self.eval_samples = eval_samples
@@ -174,12 +185,10 @@ class DDPG(RLAlgorithm):
             )
 
             self.start_worker()
-
             self.init_opt()
 
-
             # This initializes the optimizer parameters
-            sess.run(tf.global_variables_initializer())
+            self.initialize_uninitialized(sess)
             itr = 0
             path_length = 0
             path_return = 0
@@ -190,15 +199,16 @@ class DDPG(RLAlgorithm):
             with tf.variable_scope("sample_policy"):
                 sample_policy = Serializable.clone(self.policy)
 
-                #addition here
-                oracle_sample_policy = Serializable.clone(self.oracle_policy)
+            with tf.variable_scope("oracle_policy"):
+                oracle_policy = Serializable.clone(self.oracle_policy)
+
 
             for epoch in range(self.n_epochs):
                 logger.push_prefix('epoch #%d | ' % epoch)
                 logger.log("Training started")
                 train_qf_itr, train_policy_itr = 0, 0
 
-                binary_action = tf.Variable(tf.random_normal([0]), name="binary_action")
+                # binary_action = tf.Variable(tf.random_normal([0]), name="binary_action")
 
                 for epoch_itr in pyprind.prog_bar(range(self.epoch_length)):
                     # Execute policy
@@ -222,34 +232,30 @@ class DDPG(RLAlgorithm):
                     - discrete action - beta(s)
                     - OR should output BOTH mu(s) continuous action and discrete beta action (0 or 1) --- appending the action space
                     """
-
-                    import pdb; pdb.set_trace()
-
+                    # import pdb; pdb.set_trace()
                     agent_action, binary_action = self.agent_strategy.get_action(itr, observation, policy=sample_policy)  # qf=qf)
 
-                    """
-                    ASSUME: Sigma is the correct value here - need to fix this!
-                    """
-                    sigma = round(sess.run([binary_action], feed_dict={self.obs:observation.reshape(1,-1)})[0][0] )
-                    sigma = 0
+                    sigma = np.round(binary_action)
 
                     oracle_action = self.get_oracle_action(itr, observation, policy=oracle_sample_policy)
+
+                    #take action based on either oracle action or agent action
                     action = sigma * agent_action + (1 - sigma) * oracle_action
 
                     next_observation, reward, terminal, _ = self.env.step(action)
                     path_length += 1
                     path_return += reward
 
-                    ####add all the sames to the same replay buffer
 
                     if not terminal and path_length >= self.max_path_length:
                         terminal = True
                         # only include the terminal transition in this case if the flag was set
                         if self.include_horizon_terminal_transitions:
                             pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
+                    
+                    #### pool here - filled with both agent and oracle tuples - should be used for training the gating function 
                     else:
                         pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
-
 
                     """
                     Adding batch data to either agent pool or oracle pool
@@ -292,8 +298,11 @@ class DDPG(RLAlgorithm):
             self.env.terminate()
             self.policy.terminate()
 
+
+
+
     def init_opt(self):
-        # First, create "target" policy and Q functions
+
         with tf.variable_scope("target_policy"):
             target_policy = Serializable.clone(self.policy)
 
@@ -302,6 +311,7 @@ class DDPG(RLAlgorithm):
 
         with tf.variable_scope("target_qf"):
             target_qf = Serializable.clone(self.qf)
+
 
         # y need to be computed first
         obs = self.obs = self.env.observation_space.new_tensor_variable(
@@ -337,6 +347,8 @@ class DDPG(RLAlgorithm):
             obs, self.policy.get_action_sym(obs),
             deterministic=True
         )
+
+
         policy_surr = -tf.reduce_mean(policy_qval)
 
         policy_reg_surr = policy_surr + policy_weight_decay_term
@@ -344,21 +356,22 @@ class DDPG(RLAlgorithm):
         qf_input_list = [yvar, obs, action]
         policy_input_list = [obs]
 
+
         ###############################################
 
         #input_to_gates = tf.concat([obs, obs], axis=1)
-        input_to_gates = obs
+        # input_to_gates = obs
 
-        gating_func_net = MLP(name="sigma_gate",
-                          output_dim=1,
-                          hidden_sizes=(100,50,25),
-                          hidden_nonlinearity=tf.nn.relu,
-                          output_nonlinearity=tf.sigmoid,
-                          input_var=input_to_gates,
-                          input_shape=tuple(input_to_gates.get_shape().as_list()[1:]))
+        # gating_func_net = MLP(name="sigma_gate",
+        #                   output_dim=1,
+        #                   hidden_sizes=(100,50,25),
+        #                   hidden_nonlinearity=tf.nn.relu,
+        #                   output_nonlinearity=tf.sigmoid,
+        #                   input_var=input_to_gates,
+        #                   input_shape=tuple(input_to_gates.get_shape().as_list()[1:]))
 
         #gating_func_training = L.ReshapeLayer(gating_func_net.output_layer, shape=(-1,), name="gating_func_flat")
-        self.gating_function = tf.reshape(gating_func_net.output, [-1])#gating_func_training.L.get_output #tf.reshape(gating_func_net.output, [-1])
+        # self.gating_function = tf.reshape(gating_func_net.output, [-1])#gating_func_training.L.get_output #tf.reshape(gating_func_net.output, [-1])
 
 
         # y need to be computed first
@@ -393,18 +406,30 @@ class DDPG(RLAlgorithm):
         policy_reg_surr_oracle = policy_surr_oracle + policy_weight_decay_term
 
 
-        #gf_loss = (self.gating_function) * tf.stop_gradient(policy_reg_surr_oracle) + (1.0 - self.gating_function) * tf.stop_gradient(policy_reg_surr)
 
-        ## definining the loss function - including both oracle loss and agent loss
-        gf_loss = (self.gating_function) * tf.stop_gradient(qf_reg_loss_oracle) + (1.0 - self.gating_function) * tf.stop_gradient(qf_reg_loss)
+        ##### definining the loss function - including both oracle loss and agent loss
+        # gf_loss = (self.gating_function) * tf.stop_gradient(qf_reg_loss_oracle) + (1.0 - self.gating_function) * tf.stop_gradient(qf_reg_loss)
+        # gf_input_list = policy_input_list + qf_input_list
+
+        #####
+        # gf_loss = (sigma) * tf.stop_gradient(qf_reg_loss) + (1.0 - sigma) * tf.stop_gradient(qf_reg_loss_agent)
+        # gf_input_list = policy_input_list + qf_input_list
+
+        # gf_loss = (self.gating_function) * tf.stop_gradient(qf_reg_loss_oracle) + (1.0 - self.gating_function) * qf_reg_loss
 
 
+        ###### tf.stop_gradient - prevents an individual tensor from contributing to the gradients that are computed for an expression
+        gf_loss = (binary_action) * qf_reg_loss + (1.0 - binary_action) * tf.stop_gradient(qf_reg_loss_oracle)
 
         gf_input_list = [obs_oracle, action_oracle, yvar_oracle] + policy_input_list + qf_input_list
 
-        self.gating_func_update_method.update_opt(gf_loss, target=gating_func_net, inputs=gf_input_list)
 
+        """
+        FIX THIS!
+        """
+        # self.gating_func_update_method.update_opt(gf_loss, target=gating_func_net, inputs=gf_input_list)
 
+        self.gating_func_update_method.update_opt(gf_loss, target=binary_action, inputs=gf_input_list)
 
         self.f_train_gf = tensor_utils.compile_function(
             inputs=gf_input_list,
@@ -439,21 +464,24 @@ class DDPG(RLAlgorithm):
             oracle_policy=oracle_policy,
         )
 
+
+
+
     def do_training(self, itr, batch, oracle_batch, agent_batch):
 
+        ###extracting the whole batch here
         obs, actions, rewards, next_obs, terminals = ext.extract(
             batch,
             "observations", "actions", "rewards", "next_observations",
             "terminals"
         )
+
         ### target Q
         # compute the on-policy y values
         target_qf = self.opt_info["target_qf"]
-
         #target Policy
         target_policy = self.opt_info["target_policy"]
-        oracle_policy = self.opt_info["oracle_policy"]
-
+        # oracle_policy = self.opt_info["oracle_policy"]
         next_actions, _ = target_policy.get_actions(next_obs)
         next_qvals = target_qf.get_qval(next_obs, next_actions)
 
@@ -462,7 +490,6 @@ class DDPG(RLAlgorithm):
 
         f_train_qf = self.opt_info["f_train_qf"]
         qf_loss, qval, _ = f_train_qf(ys, obs, actions)
-
 
         target_qf.set_param_values(
             target_qf.get_param_values() * (1.0 - self.soft_target_tau) +
@@ -475,33 +502,40 @@ class DDPG(RLAlgorithm):
         self.train_policy_itr += self.policy_updates_ratio
         train_policy_itr = 0
 
+
+
+        ### extracting agent only batch here
         obs_agent_only, actions_agent_only, rewards_agent_only, next_obs_agent_only, terminals_agent_only = ext.extract(
             agent_batch,
             "observations", "actions", "rewards", "next_observations",
             "terminals"
         )
         
+        ### extracting oracle only batch here
         obs_oracle_only, actions_oracle_only, rewards_oracle_only, next_obs_oracle_only, terminals_oracle_only = ext.extract(
             oracle_batch,
             "observations", "actions", "rewards", "next_observations",
             "terminals"
         )
 
+
+        ### computing targets based on agent samples
         next_actions_agent_only, _ = target_policy.get_actions(next_obs_agent_only)
         next_qvals_agent_only = target_qf.get_qval(next_obs_agent_only, next_actions_agent_only)
         ys_agent_only = rewards_agent_only + (1. - terminals_agent_only) * self.discount * next_qvals_agent_only.reshape(-1)
 
 
-
-        """
-        Actions from target policy here - incorrect? Should be from oracle policy?
-        """
+        ### computing targets based on oracle samples
         next_actions_oracle_only, _ = oracle_policy.get_actions(next_obs_oracle_only)
         next_qvals_oracle_only = target_qf.get_qval(next_obs_oracle_only, next_actions_oracle_only)
         ys_oracle_only = rewards_oracle_only + (1. - terminals_oracle_only) * self.discount * next_qvals_oracle_only.reshape(-1)
 
 
+        """
+        Training function - using both the oracle and agent samples
+        """
         gf_loss, gval, _ = self.f_train_gf(obs_oracle_only, actions_oracle_only, ys_oracle_only, ys_agent_only, obs_agent_only, actions_agent_only)
+
 
 
         while self.train_policy_itr > 0:

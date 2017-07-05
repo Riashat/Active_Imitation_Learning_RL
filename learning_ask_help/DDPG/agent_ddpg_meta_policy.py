@@ -223,18 +223,17 @@ class DDPG(RLAlgorithm):
                     use a sigma gating function - for every state, decide whether to
                     ask the oracle or not
                     """
-                    #################
+
+
                     agent_action = self.es.get_action(itr, observation, policy=sample_policy)  # qf=qf)
                     oracle_action = self.get_oracle_action(itr, observation, policy=oracle_sample_policy)
 
                     """
                     Meta-Policy - policy to choose whether to use agent or oracle policy
                     """
-                    import pdb; pdb.set_trace()
+                    # import pdb; pdb.set_trace()
                     sigma = round(sess.run([self.gating_function], feed_dict={self.obs : observation.reshape(1,-1)})[0][0] )# hard gate for now
                     action =  sigma * oracle_action + (1 - sigma) * agent_action
-
-                    ###############
 
                     #### usual ddpg step for taking action
                     #action = self.es.get_action(itr, observation, policy=sample_policy)  # qf=qf)
@@ -363,7 +362,6 @@ class DDPG(RLAlgorithm):
         #gating_func_training = L.ReshapeLayer(gating_func_net.output_layer, shape=(-1,), name="gating_func_flat")
         self.gating_function = tf.reshape(gating_func_net.output, [-1])#gating_func_training.L.get_output #tf.reshape(gating_func_net.output, [-1])
 
-        print ("Printing Gating Function", self.gating_function)
 
         # y need to be computed first
         obs_oracle = self.env.observation_space.new_tensor_variable(
@@ -400,7 +398,10 @@ class DDPG(RLAlgorithm):
         #gf_loss = (self.gating_function) * tf.stop_gradient(policy_reg_surr_oracle) + (1.0 - self.gating_function) * tf.stop_gradient(policy_reg_surr)
 
         ## definining the loss function - including both oracle loss and agent loss
-        gf_loss = (self.gating_function) * tf.stop_gradient(qf_reg_loss_oracle) + (1.0 - self.gating_function) * tf.stop_gradient(qf_reg_loss)
+
+        import pdb; pdb.set_trace()
+
+        gf_loss = (self.gating_function) * tf.stop_gradient(qf_reg_loss_oracle) + (1.0 - self.gating_function) * qf_reg_loss
 
 
 

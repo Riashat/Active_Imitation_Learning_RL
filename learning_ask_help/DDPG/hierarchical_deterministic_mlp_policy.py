@@ -57,10 +57,10 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
                 L.get_output(prob_network.output_layer, deterministic=True)
             )
 
-            # self._f_prob_binary = tensor_utils.compile_function(
-            #     [prob_network.input_layer.input_var],
-            #     L.get_output(prob_network.output_layer_binary, deterministic=True)
-            # )
+            self._f_prob_binary = tensor_utils.compile_function(
+                [prob_network.input_layer.input_var],
+                L.get_output(prob_network.output_layer_binary, deterministic=True)
+            )
 
         self.prob_network = prob_network
 
@@ -69,7 +69,7 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
         # batch normalization layers.
         # TODO: this doesn't currently work properly in the tf version so we leave out batch_norm
         super(LayeredDeterministicMLPPolicy, self).__init__(env_spec)
-        LayersPowered.__init__(self, [prob_network.output_layer])
+        LayersPowered.__init__(self, [prob_network.output_layer, prob_network.output_layer_binary])
         # LayersPowered.__init__(self, [prob_network.output_layer_binary])
         
 
@@ -85,7 +85,7 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
         #get continuous action output
         action = self._f_prob([flat_obs])[0]
         #get discrete action output - sigmoid probability in this case
-        binary_action = tf.reshape(self.prob_network.output, [-1])
+        binary_action = self._f_prob_binary([flat_obs])[0]# tf.reshape(self.prob_network.output_binary, [-1])
 
         return action, binary_action, dict()
 

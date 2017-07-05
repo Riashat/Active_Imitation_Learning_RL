@@ -48,6 +48,7 @@ class HierarchicalMLP(LayersPowered, Serializable):
                 l_hid, 
                 num_units = hidden_size,
                 nonlinearity = hidden_nonlinearity,
+                name="hidden_binary",
                 W=hidden_W_init,
                 b=hidden_b_init,
                 weight_normalization=weight_normalization
@@ -69,6 +70,7 @@ class HierarchicalMLP(LayersPowered, Serializable):
                 l_hid,
                 num_units = hidden_size,
                 nonlinearity = hidden_nonlinearity,
+                name="hidden_final",
                 W=hidden_W_init,
                 b=hidden_b_init,
                 weight_normalization=weight_normalization
@@ -98,7 +100,7 @@ class HierarchicalMLP(LayersPowered, Serializable):
             self._output_binary = L.get_output(l_out_binary)
             self._output = L.get_output(l_out)
 
-            LayersPowered.__init__(self, l_out)
+            LayersPowered.__init__(self, [l_out, l_out_binary])
 
     @property
     def input_layer(self):
