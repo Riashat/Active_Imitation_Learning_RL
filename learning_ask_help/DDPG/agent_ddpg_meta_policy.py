@@ -174,10 +174,7 @@ class DDPG(RLAlgorithm):
                 replacement_prob=self.replacement_prob,
             )
 
-
-
             self.start_worker()
-
             self.init_opt()
 
 
@@ -223,7 +220,6 @@ class DDPG(RLAlgorithm):
                     use a sigma gating function - for every state, decide whether to
                     ask the oracle or not
                     """
-
 
                     agent_action = self.es.get_action(itr, observation, policy=sample_policy)  # qf=qf)
                     oracle_action = self.get_oracle_action(itr, observation, policy=oracle_sample_policy)
