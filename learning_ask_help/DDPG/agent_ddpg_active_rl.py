@@ -199,8 +199,10 @@ class DDPG(RLAlgorithm):
             with tf.variable_scope("sample_policy"):
                 sample_policy = Serializable.clone(self.policy)
 
-            with tf.variable_scope("oracle_policy"):
-                oracle_policy = Serializable.clone(self.oracle_policy)
+            # with tf.variable_scope("oracle_policy"):
+            #     oracle_policy = Serializable.clone(self.oracle_policy)
+
+            oracle_policy = self.oracle_policy
 
 
             for epoch in range(self.n_epochs):
@@ -236,11 +238,10 @@ class DDPG(RLAlgorithm):
 
                     agent_action, binary_action = self.agent_strategy.get_action(itr, observation, policy=sample_policy)  # qf=qf)
 
-                    self.binary_action = binary_action
-
                     sigma = np.round(binary_action)
 
-                    oracle_action = self.get_oracle_action(itr, observation, policy=oracle_sample_policy)
+                    # oracle_action = self.get_oracle_action(itr, observation, policy=oracle_sample_policy)
+                    oracle_action = self.get_oracle_action(itr, observation, policy=oracle_policy)
 
                     #take action based on either oracle action or agent action
                     action = sigma * agent_action + (1 - sigma) * oracle_action
@@ -422,8 +423,9 @@ class DDPG(RLAlgorithm):
 
         ###### tf.stop_gradient - prevents an individual tensor from contributing to the gradients that are computed for an expression
         #gf_loss = (self.gating_function) * tf.stop_gradient(qf_reg_loss_oracle) + (1.0 - self.gating_function) * qf_reg_loss
-        
-        gf_loss = (self.binary_action) * qf_reg_loss + (1.0 - self.binary_action) * tf.stop_gradient(qf_reg_loss_oracle)
+
+        #gf_loss = (self.binary_action) * qf_reg_loss + (1.0 - self.binary_action) * tf.stop_gradient(qf_reg_loss_oracle)
+        gf_loss = (target_policy.binary_output) * qf_reg_loss + (1.0 - target_policy.binary_output) * tf.stop_gradient(qf_reg_loss_oracle)
 
 
         gf_input_list = [obs_oracle, action_oracle, yvar_oracle] + policy_input_list + qf_input_list
@@ -433,7 +435,8 @@ class DDPG(RLAlgorithm):
         FIX THIS!
         """
         # self.gating_func_update_method.update_opt(gf_loss, target=gating_func_net, inputs=gf_input_list)
-        self.gating_func_update_method.update_opt(gf_loss, target=self.binary_action, inputs=gf_input_list)
+        # self.gating_func_update_method.update_opt(gf_loss, target=self.binary_action, inputs=gf_input_list)
+        self.gating_func_update_method.update_opt(gf_loss, target=target_policy.output_layer_binary, inputs=gf_input_list)
 
         self.f_train_gf = tensor_utils.compile_function(
             inputs=gf_input_list,

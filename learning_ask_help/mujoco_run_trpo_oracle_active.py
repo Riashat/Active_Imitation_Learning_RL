@@ -2,24 +2,9 @@ from rllab.envs.normalized_env import normalize
 from rllab.misc.instrument import stub, run_experiment_lite
 from rllab.baselines.linear_feature_baseline import LinearFeatureBaseline
 
-### Environments
-from rllab.envs.box2d.cartpole_env import CartpoleEnv
-from rllab.envs.box2d.mountain_car_env import MountainCarEnv
-from rllab.envs.box2d.car_parking_env import CarParkingEnv
-from rllab.envs.grid_world_env import GridWorldEnv
-from rllab.envs.grid_world_env_modified import GridWorldEnv_Modified
-from rllab.envs.large_grid_world_env import Large_GridWorldEnv 
-from rllab.envs.large_grid_world_env_modified import Large_GridWorldEnv as Large_GridWorldEnv_Modified
-from learning_active_learning.gym_modified_environments.envs.cliff_walking import CliffWalkingEnv
-from learning_active_learning.gym_modified_environments.envs.cartpole_modified import CartPoleModifiedEnv
-from learning_active_learning.gym_modified_environments.envs.mountain_car_withCliff import MountainCarCliffEnv
-from learning_active_learning.gym_modified_environments.envs.windy_gridworld import WindyGridworldEnv
+
 
 from rllab.envs.gym_env import GymEnv
-
-"""
-Modifying Goal Position
-"""
 from sandbox.rocky.tf.envs.base import TfEnv
 
 # Policies
@@ -27,9 +12,13 @@ from sandbox.rocky.tf.policies.gaussian_mlp_policy import GaussianMLPPolicy
 from sandbox.rocky.tf.policies.categorical_mlp_policy import CategoricalMLPPolicy
 from sandbox.rocky.tf.policies.deterministic_mlp_policy import DeterministicMLPPolicy
 from sandbox.rocky.tf.policies.uniform_control_policy import UniformControlPolicy
+
+
+### TRPO Classes
 from sandbox.rocky.tf.algos.trpo import TRPO as Oracle_TRPO
-#from sandbox.rocky.tf.algos.trpo_active import TRPO
-from sandbox.rocky.tf.algos.trpo_active_continuous import TRPO
+# from sandbox.rocky.tf.algos.trpo_active_continuous import TRPO
+from trpo_active_continuous import TRPO
+
 
 
 from rllab.misc import ext
@@ -48,9 +37,8 @@ from sandbox.rocky.tf.spaces.box import Box
 
 
 parser = argparse.ArgumentParser()
-
 parser.add_argument("envs", help="The environment name from OpenAIGym environments")
-parser.add_argument("envs_modified", help="The environment name from OpenAIGym environments")
+parser.add_argument("--num_epochs", default=100, type=int)
 parser.add_argument("--text_log_file", default="./data/debug.log", help="Where text output will go")
 parser.add_argument("--tabular_log_file", default="./data/progress.csv", help="Where tabular output will go")
 parser.add_argument("--text_log_file_active", default="./data/debug.log", help="Where text output will go")
@@ -64,118 +52,54 @@ logger.set_log_tabular_only(False)
 
 
 supported_gym_envs = ["MountainCar-v0", "InvertedPendulum-v1", "InvertedDoublePendulum-v1", "Hopper-v1", "HalfCheetah-v1"]
-other_env_class_map  = {"Cartpole" : CartpoleEnv,  "MountainCar" : MountainCarEnv}
 
 
-if args.envs in supported_gym_envs:
-    gymenv = GymEnv(args.envs, force_reset=True, record_video=False, record_log=False)
-else:
-    gymenv = other_env_class_map[args.envs]()
-
-if args.envs_modified in supported_gym_envs:
-    gymenv_modified = GymEnv(args.envs_modified, force_reset=True, record_video=False, record_log=False)
-else:
-    gymenv_modified = other_env_class_map[args.envs_modified]()
-
-
+gymenv = GymEnv(args.envs, force_reset=True, record_video=False, record_log=False)
 
 
 env = TfEnv(gymenv)
-
-env_modified = TfEnv(gymenv_modified)
-
+# env_modified = TfEnv(gymenv_modified)
 
 
-if args.envs_modified == "CartPole-v0":
-    env_modified.action_space = Discrete(3)
-    env_modified_action_space = 3
-
-elif args.envs_modified == "MountainCar-v0":
-    env_modified.action_space = Discrete(4)
-    env_modified_action_space = 4
-
-elif args.envs_modified == "Acrobot-v1":
-    env_modified.action_space = Discrete(4)
-    env_modified_action_space = 4
-
-elif args.envs_modified == "Large_GridWorld_Modified":
-    #envs_modified.action_space = 5
-    env_modified_action_space = 5
-
-elif args.envs_modified == "Hopper-v1":
-    # env_modified.action_space = Box(3)
+if args.envs == "Hopper-v1":
     env_modified_action_space = 1000
 
-
-
-"""
-Use CategoricalMLPPolicy for Discrete Action Space Environments
-and GaussianMLPPolicy for Continuous Action Space Environments
-"""
 
 """
 ORACLE POLICY
 """
-
-if type(env.spec.action_space) is Discrete:
-    oracle_policy = CategoricalMLPPolicy(
+oracle_policy = GaussianMLPPolicy(
     name="oracle_policy",
     env_spec=env.spec,
     # The neural network policy should have two hidden layers, each with 32 hidden units.
     hidden_sizes=(100, 50, 25),
     hidden_nonlinearity=tf.nn.relu,
-    )
-else:
-    oracle_policy = GaussianMLPPolicy(
-    name="oracle_policy",
-    env_spec=env.spec,
-    # The neural network policy should have two hidden layers, each with 32 hidden units.
-    hidden_sizes=(100, 50, 25),
-    hidden_nonlinearity=tf.nn.relu,
-    )
-
+)
 
 oracle_baseline = LinearFeatureBaseline(env_spec=env.spec)
-
 
 """
 AGENT POLICY
 """
-
-if type(env_modified.spec.action_space) is Discrete:
-    policy = CategoricalMLPPolicy(
+policy = GaussianMLPPolicy(
     name="policy",
-    env_spec=env_modified.spec,
+    env_spec=env.spec,
     # The neural network policy should have two hidden layers, each with 32 hidden units.
     hidden_sizes=(100, 50, 25),
     hidden_nonlinearity=tf.nn.relu,
-    )
-else:
-    policy = GaussianMLPPolicy(
-    name="policy",
-    env_spec=env_modified.spec,
-    # The neural network policy should have two hidden layers, each with 32 hidden units.
-    hidden_sizes=(100, 50, 25),
-    hidden_nonlinearity=tf.nn.relu,
-    )
+)
 
-baseline = LinearFeatureBaseline(env_spec=env_modified.spec)
+baseline = LinearFeatureBaseline(env_spec=env.spec)
 
 
 """
 Few hyperparameters
 """
-num_epochs = 2
 max_path_length_horizon = 2000
 num_final_rollouts = 10
 batch_size_value = 5000
 step_size_value = 0.01
 regularisation_coefficient = 1e-5
-
-
-print ("Oracle Environment Action Space", env.action_space)
-print ("Agent Environment Action Space", env_modified.action_space)
-
 
 
 
@@ -189,7 +113,7 @@ with tf.Session() as sess:
         baseline=oracle_baseline,
         batch_size=batch_size_value,    #use batch size upto 25000
         max_path_length=max_path_length_horizon, #or use env.horizon here - would be suited for different environments (may not be defined for all envs though)
-        n_itr=num_epochs,
+        n_itr=args.num_epochs,
         discount=0.99,
         step_size=step_size_value,
         optimizer=ConjugateGradientOptimizer(reg_coeff=regularisation_coefficient, hvp_approach=FiniteDifferenceHvp(base_eps=regularisation_coefficient))
@@ -232,13 +156,13 @@ with tf.Session() as sess:
     """
     algo = TRPO(
         sess=sess,
-        env=env_modified,
+        env=env,
         policy=policy,
         oracle_policy=oracle_policy,
         baseline=baseline,
         batch_size=batch_size_value,
         max_path_length = max_path_length_horizon,         #max_path_length=env.horizon,
-        n_itr=num_epochs,
+        n_itr=args.num_epochs,
         discount=0.99,
         step_size=step_size_value,
         gae_lambda=1.0,

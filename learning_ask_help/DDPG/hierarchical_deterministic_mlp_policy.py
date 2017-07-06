@@ -1,14 +1,15 @@
-import lasagne
-import lasagne.layers as L
-import lasagne.nonlinearities as NL
-import lasagne.init as LI
+# import lasagne
+# import lasagne.layers as L
+# import lasagne.nonlinearities as NL
+# import lasagne.init as LI
 from rllab.core.serializable import Serializable
 from rllab.misc import ext
 from rllab.misc.overrides import overrides
 from sandbox.rocky.tf.core.layers_powered import LayersPowered
 from sandbox.rocky.tf.core.network import MLP
 
-from learning_active_learning.learning_ask_help.DDPG.hierarchical_network import HierarchicalMLP
+# from learning_active_learning.learning_ask_help.DDPG.hierarchical_network import HierarchicalMLP
+from hierarchical_network import HierarchicalMLP
 
 from sandbox.rocky.tf.distributions.categorical import Categorical
 from sandbox.rocky.tf.policies.base import Policy
@@ -61,6 +62,10 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
                 [prob_network.input_layer.input_var],
                 L.get_output(prob_network.output_layer_binary, deterministic=True)
             )
+
+
+        self.output_layer_binary = prob_network.output_layer_binary
+        self.binary_output = L.get_output(prob_network.output_layer_binary, deterministic=True)
 
         self.prob_network = prob_network
 
