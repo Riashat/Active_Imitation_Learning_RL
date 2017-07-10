@@ -8,7 +8,6 @@ import numpy as np
 from rllab.sampler.stateful_pool import ProgBarCounter
 import rllab.misc.logger as logger
 import itertools
-# from learning_active_learning.learning_ask_help.grid_world_oracle.oracle_policy_grid_world import oracle_action
 from sandbox.rocky.tf.envs.vec_env_executor_active import VecEnvExecutor
 
 
@@ -42,13 +41,19 @@ class VectorizedSampler(BaseSampler):
     this returns PATHS - same as Trajectories?
     These samples are used for estimating the gradient
     """
-    def obtain_samples(self, itr, oracle_policy, env_action_space):
+    # def obtain_samples(self, itr, oracle_policy, env_action_space):
+    def obtain_samples(self, itr, oracle_policy):
         logger.log("Obtaining samples for iteration %d..." % itr)
         paths = []
+        agent_only_paths = []
+        oracle_only_paths = []
         n_samples = 0
         obses = self.vec_env.reset()
         dones = np.asarray([True] * self.vec_env.num_envs)
         running_paths = [None] * self.vec_env.num_envs
+        agent_only_running_paths = [None] * self.vec_env.num_envs
+        oracle_only_running_paths = [None] * self.vec_env.num_envs
+
 
         pbar = ProgBarCounter(self.algo.batch_size)
         policy_time = 0
@@ -65,33 +70,22 @@ class VectorizedSampler(BaseSampler):
             t = time.time()
             policy.reset(dones)
 
-
             #modifly POLICY.GET_ACTIONS HERE
-            actions, agent_infos = policy.get_actions(obses)
+            agent_actions, binary_actions, agent_infos = policy.get_actions(obses)
 
-            """
-            Need to change here for continuous action spaces
-            """
+            sigma = np.round(binary_actions)
 
-            """
-            if "oracle action" chosen - 
-            then oracle returns the action for that current state
-            - take step in the environment with that action chosen by the oracle
-            """
+            oracle_actions, oracle_agent_infos = oracle_policy.get_actions(obses)
 
-            """
-            TODO HERE - handing over to the oracle
-            """
-            # changed_actions, cost = self.oracle_interaction(obses, actions, oracle_policy, env_action_space)
-            # actions = changed_actions
+            #take action based on either oracle action or agent action
+            actions = sigma * agent_actions + (1 - sigma) * oracle_actions
 
             policy_time += time.time() - t
             t = time.time()
 
-            next_obses, rewards, dones, env_infos = self.vec_env.step(actions, itr, env_action_space)
+            # next_obses, rewards, dones, env_infos = self.vec_env.step(actions, itr, env_action_space)
+            next_obses, rewards, dones, env_infos = self.vec_env.step(actions, itr)
 
-            env_time += time.time() - t
-            t = time.time()
 
             agent_infos = tensor_utils.split_tensor_dict_list(agent_infos)
             env_infos = tensor_utils.split_tensor_dict_list(env_infos)
@@ -128,6 +122,70 @@ class VectorizedSampler(BaseSampler):
                     ))
                     n_samples += len(running_paths[idx]["rewards"])
                     running_paths[idx] = None
+
+
+            if sigma[0] == 1. or sigma[1] == 1.:
+
+                for idx, observation, action, reward, env_info, agent_info, done in zip(itertools.count(), obses, actions,
+                                                                                        rewards, env_infos, agent_infos,
+                                                                                        dones):
+                    if agent_only_running_paths[idx] is None:
+                        agent_only_running_paths[idx] = dict(
+                            observations=[],
+                            actions=[],
+                            rewards=[],
+                            env_infos=[],
+                            agent_infos=[],
+                        )
+                    agent_only_running_paths[idx]["observations"].append(observation)
+                    agent_only_running_paths[idx]["actions"].append(action)
+                    agent_only_running_paths[idx]["rewards"].append(reward)
+                    agent_only_running_paths[idx]["env_infos"].append(env_info)
+                    agent_only_running_paths[idx]["agent_infos"].append(agent_info)
+
+                    if done:
+                        agent_only_paths.append(dict(
+                            observations=self.env_spec.observation_space.flatten_n(agent_only_running_paths[idx]["observations"]),
+                            actions=self.env_spec.action_space.flatten_n(agent_only_running_paths[idx]["actions"]),
+                            rewards=tensor_utils.stack_tensor_list(agent_only_running_paths[idx]["rewards"]),
+                            env_infos=tensor_utils.stack_tensor_dict_list(agent_only_running_paths[idx]["env_infos"]),
+                            agent_infos=tensor_utils.stack_tensor_dict_list(agent_only_running_paths[idx]["agent_only_infos"]),
+                        ))
+                        n_samples += len(agent_only_running_paths[idx]["rewards"])
+                        agent_only_running_paths[idx] = None
+
+
+            elif sigma[0] == 0. or sigma[1] == 0.:
+
+                for idx, observation, action, reward, env_info, agent_info, done in zip(itertools.count(), obses, actions,
+                                                                                        rewards, env_infos, agent_infos,
+                                                                                        dones):
+                    if oracle_only_running_paths[idx] is None:
+                        oracle_only_running_paths[idx] = dict(
+                            observations=[],
+                            actions=[],
+                            rewards=[],
+                            env_infos=[],
+                            agent_infos=[],
+                        )
+                    oracle_only_running_paths[idx]["observations"].append(observation)
+                    oracle_only_running_paths[idx]["actions"].append(action)
+                    oracle_only_running_paths[idx]["rewards"].append(reward)
+                    oracle_only_running_paths[idx]["env_infos"].append(env_info)
+                    oracle_only_running_paths[idx]["agent_infos"].append(agent_info)
+
+                    if done:
+                        oracle_only_paths.append(dict(
+                            observations=self.env_spec.observation_space.flatten_n(oracle_only_running_paths[idx]["observations"]),
+                            actions=self.env_spec.action_space.flatten_n(oracle_only_running_paths[idx]["actions"]),
+                            rewards=tensor_utils.stack_tensor_list(oracle_only_running_paths[idx]["rewards"]),
+                            env_infos=tensor_utils.stack_tensor_dict_list(oracle_only_running_paths[idx]["env_infos"]),
+                            agent_infos=tensor_utils.stack_tensor_dict_list(oracle_only_running_paths[idx]["oracle_infos"]),
+                        ))
+                        n_samples += len(oracle_only_running_paths[idx]["rewards"])
+                        oracle_only_running_paths[idx] = None
+
+
             process_time += time.time() - t
             pbar.inc(len(obses))
             obses = next_obses
@@ -138,7 +196,7 @@ class VectorizedSampler(BaseSampler):
         logger.record_tabular("EnvExecTime", env_time)
         logger.record_tabular("ProcessExecTime", process_time)
 
-        return paths
+        return paths, agent_only_paths, oracle_only_paths
 
 
     # def oracle_interaction(self, obses, actions, oracle_policy, env_action_space):

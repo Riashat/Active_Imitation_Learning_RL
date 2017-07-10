@@ -1,26 +1,16 @@
 from rllab.envs.normalized_env import normalize
 from rllab.misc.instrument import stub, run_experiment_lite
 from rllab.baselines.linear_feature_baseline import LinearFeatureBaseline
-
-
-
 from rllab.envs.gym_env import GymEnv
 from sandbox.rocky.tf.envs.base import TfEnv
 
 # Policies
 from sandbox.rocky.tf.policies.gaussian_mlp_policy import GaussianMLPPolicy
-from sandbox.rocky.tf.policies.categorical_mlp_policy import CategoricalMLPPolicy
-from sandbox.rocky.tf.policies.deterministic_mlp_policy import DeterministicMLPPolicy
-from sandbox.rocky.tf.policies.uniform_control_policy import UniformControlPolicy
-
+from hierarchical_gaussian_mlp_policy import LayeredGaussianMLPPolicy
 
 ### TRPO Classes
 from sandbox.rocky.tf.algos.trpo import TRPO as Oracle_TRPO
-# from sandbox.rocky.tf.algos.trpo_active_continuous import TRPO
 from trpo_active_continuous import TRPO
-
-
-
 from rllab.misc import ext
 from sandbox.rocky.tf.optimizers.conjugate_gradient_optimizer import ConjugateGradientOptimizer
 from sandbox.rocky.tf.optimizers.conjugate_gradient_optimizer import FiniteDifferenceHvp
@@ -29,12 +19,11 @@ import pickle
 import os.path as osp
 import numpy as np
 
-from learning_active_learning.learning_ask_help.all_utilities import *
+from all_utilities import *
 import tensorflow as tf
 import argparse
 from sandbox.rocky.tf.spaces.discrete import Discrete
 from sandbox.rocky.tf.spaces.box import Box
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument("envs", help="The environment name from OpenAIGym environments")
@@ -45,7 +34,6 @@ parser.add_argument("--text_log_file_active", default="./data/debug.log", help="
 parser.add_argument("--tabular_log_file_active", default="./data/progress_active.csv", help="Where tabular output will go")
 args = parser.parse_args()
 
-
 logger.add_text_output(args.text_log_file)
 logger.add_tabular_output(args.tabular_log_file)
 logger.set_log_tabular_only(False)
@@ -53,16 +41,12 @@ logger.set_log_tabular_only(False)
 
 supported_gym_envs = ["MountainCar-v0", "InvertedPendulum-v1", "InvertedDoublePendulum-v1", "Hopper-v1", "HalfCheetah-v1"]
 
-
 gymenv = GymEnv(args.envs, force_reset=True, record_video=False, record_log=False)
-
-
 env = TfEnv(gymenv)
-# env_modified = TfEnv(gymenv_modified)
 
 
-if args.envs == "Hopper-v1":
-    env_modified_action_space = 1000
+# if args.envs == "Hopper-v1":
+#     env_modified_action_space = 1000
 
 
 """
@@ -81,7 +65,7 @@ oracle_baseline = LinearFeatureBaseline(env_spec=env.spec)
 """
 AGENT POLICY
 """
-policy = GaussianMLPPolicy(
+policy = LayeredGaussianMLPPolicy(
     name="policy",
     env_spec=env.spec,
     # The neural network policy should have two hidden layers, each with 32 hidden units.
@@ -103,10 +87,8 @@ regularisation_coefficient = 1e-5
 
 
 
+
 with tf.Session() as sess:
-
-    # logger.log("Training Policy on %s" % env_name)
-
     oracle_algo = Oracle_TRPO(
         env=env,
         policy=oracle_policy,
@@ -168,10 +150,9 @@ with tf.Session() as sess:
         gae_lambda=1.0,
         optimizer=ConjugateGradientOptimizer(reg_coeff=regularisation_coefficient, hvp_approach=FiniteDifferenceHvp(base_eps=regularisation_coefficient))
     )
+    #agent_train(algo, env_modified_action_space=env_modified_action_space, oracle_policy=oracle_policy, sess=sess )    
+    agent_train(algo, oracle_policy=oracle_policy, sess=sess )    
 
-    agent_train(algo, env_modified_action_space=env_modified_action_space, oracle_policy=oracle_policy, sess=sess )
-
-    
     # """
     # Furher need to evaluate the learnt agent policy
     # - taken from batch_polopt_active.py

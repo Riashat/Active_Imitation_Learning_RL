@@ -4,9 +4,6 @@ import rllab.misc.logger as logger
 from sandbox.rocky.tf.policies.base import Policy
 import tensorflow as tf
 from sandbox.rocky.tf.samplers.batch_sampler import BatchSampler
-#from sandbox.rocky.tf.samplers.vectorized_sampler_active import VectorizedSampler
-# from sandbox.rocky.tf.samplers.vectorized_sampler_active_continuous import VectorizedSampler
-
 from vectorized_sampler_active_continuous import VectorizedSampler
 
 from rllab.sampler.utils import rollout
@@ -101,8 +98,12 @@ class BatchPolopt(RLAlgorithm):
     def shutdown_worker(self):
         self.sampler.shutdown_worker()
 
-    def obtain_samples(self, itr, oracle_policy, env_action_space):
-        return self.sampler.obtain_samples(itr, oracle_policy, env_action_space)
+    # def obtain_samples(self, itr, oracle_policy, env_action_space):
+    #     return self.sampler.obtain_samples(itr, oracle_policy, env_action_space)
+
+    def obtain_samples(self, itr, oracle_policy):
+        return self.sampler.obtain_samples(itr, oracle_policy)
+
 
     def process_samples(self, itr, paths):
         return self.sampler.process_samples(itr, paths)
@@ -123,17 +124,33 @@ class BatchPolopt(RLAlgorithm):
             with logger.prefix('itr #%d | ' % itr):
 
                 logger.log("Obtaining samples...")
-                paths = self.obtain_samples(itr, self.oracle_policy, env_action_space)
+
+                logger.log("Collecting both agent and oracle samples...")
+                # paths = self.obtain_samples(itr, self.oracle_policy, env_action_space)
+
+                import pdb; pdb.set_trace()
+
+                paths = self.obtain_samples(itr, self.oracle_policy)
+
+
                 logger.log("Processing samples...")
                 samples_data = self.process_samples(itr, paths)
+
+
                 logger.log("Logging diagnostics...")
                 self.log_diagnostics(paths)
+
+                #### optimising the policy based on the collected samples
                 logger.log("Optimizing policy...")
                 self.optimize_policy(itr, samples_data)
                 logger.log("Saving snapshot...")
+
+
                 params = self.get_itr_snapshot(itr, samples_data)  # , **kwargs)
                 if self.store_paths:
                     params["paths"] = samples_data["paths"]
+
+
                 logger.save_itr_params(itr, params)
                 logger.log("Saved")
                 logger.record_tabular('Time', time.time() - start_time)

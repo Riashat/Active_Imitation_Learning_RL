@@ -61,7 +61,8 @@ def oracle_train(algo, sess=None):
 
 
 #agent train function with TRPO
-def agent_train(algo, env_modified_action_space, oracle_policy, sess=None,):
+# def agent_train(algo, env_modified_action_space, oracle_policy, sess=None,):
+def agent_train(algo, oracle_policy, sess=None,):
     """
     This is necessary so that we don't wipe away already initialized policy params.
     Ideally, we should pull request this in as an option to RLlab and remove it from here once done
@@ -88,19 +89,26 @@ def agent_train(algo, env_modified_action_space, oracle_policy, sess=None,):
             logger.log("Obtaining samples...")
 
             #obtain_samples - implemented in vectorized sampler
-            paths = algo.obtain_samples(itr, oracle_policy, env_modified_action_space)
+            # paths = algo.obtain_samples(itr, oracle_policy, env_modified_action_space)
+
+            paths, agent_only_paths, oracle_only_paths = algo.obtain_samples(itr, oracle_policy)
 
             logger.log("Processing samples...")
 
             #process_samples - in batch_polopt - from there in #tf.samplers.batch_sampler
             samples_data = algo.process_samples(itr, paths)
+            agent_samples_data = algo.process_samples(itr, agent_only_paths)
+            oracle_samples_data = algo.process_samples(itr, oracle_only_paths)
+
+
             logger.log("Logging diagnostics...")
             algo.log_diagnostics(paths)
 
             logger.log("Optimizing policy...")
 
             #optimize_policy - in npo_active.py
-            algo.optimize_policy(itr, samples_data)
+            algo.optimize_policy(itr, samples_data, agent_samples_data, oracle_samples_data)
+
 
             logger.log("Saving snapshot...")
             params = algo.get_itr_snapshot(itr, samples_data)  # , **kwargs)

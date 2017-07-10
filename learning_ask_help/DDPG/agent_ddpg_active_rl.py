@@ -238,6 +238,13 @@ class DDPG(RLAlgorithm):
 
                     agent_action, binary_action = self.agent_strategy.get_action(itr, observation, policy=sample_policy)  # qf=qf)
 
+                    print ("Continuous Action", agent_action)
+                    print ("Binary sigmoid Action", binary_action)
+
+                    import pdb; pdb.set_trace()
+
+
+
                     sigma = np.round(binary_action)
 
                     # oracle_action = self.get_oracle_action(itr, observation, policy=oracle_sample_policy)
@@ -261,16 +268,17 @@ class DDPG(RLAlgorithm):
                     else:
                         pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
 
-                    """
-                    Adding batch data to either agent pool or oracle pool
-                    """
+
                     if sigma < 1:
-                        agent_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
-                    else:
                         oracle_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
+                    else:
+                        agent_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
 
 
                     observation = next_observation
+
+                    ## add to agent only samples if sigma is 1 - corresponding to 
+
 
                     if pool.size >= self.min_pool_size:
                         for update_itr in range(self.n_updates_per_sample):

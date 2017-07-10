@@ -7,10 +7,7 @@ from rllab.misc import ext
 from rllab.misc.overrides import overrides
 from sandbox.rocky.tf.core.layers_powered import LayersPowered
 from sandbox.rocky.tf.core.network import MLP
-
-# from learning_active_learning.learning_ask_help.DDPG.hierarchical_network import HierarchicalMLP
 from hierarchical_network import HierarchicalMLP
-
 from sandbox.rocky.tf.distributions.categorical import Categorical
 from sandbox.rocky.tf.policies.base import Policy
 from sandbox.rocky.tf.misc import tensor_utils
@@ -89,16 +86,29 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
 
         #get continuous action output
         action = self._f_prob([flat_obs])[0]
+
         #get discrete action output - sigmoid probability in this case
         binary_action = self._f_prob_binary([flat_obs])[0]# tf.reshape(self.prob_network.output_binary, [-1])
 
         return action, binary_action, dict()
 
+
+
     @overrides
     def get_actions(self, observations):
         flat_obs = self.observation_space.flatten_n(observations)
+ 
+        import pdb; pdb.set_trace()
+
         actions = self._f_prob(flat_obs)
-        return actions, dict()
+        
+        binary_action = self._f_prob_binary([flat_obs])[0]
+
+
+        return actions, binary_action, dict()
+
+
+
 
     def get_action_sym(self, obs_var):
         return L.get_output(self.prob_network.output_layer, obs_var)

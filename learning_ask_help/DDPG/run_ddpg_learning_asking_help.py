@@ -1,9 +1,5 @@
-# from ddpg_tensorflow.ddpg import DDPG
-# from learning_active_learning.learning_ask_help.DDPG.oracle_ddpg import DDPG as Oracle_DDPG
 from oracle_ddpg import DDPG as Oracle_DDPG
 from agent_ddpg_active_rl import DDPG as Agent_DDPG
-# from learning_active_learning.learning_ask_help.DDPG.agent_ddpg_active_rl import DDPG as Agent_DDPG
-
 
 from rllab.envs.box2d.cartpole_env import CartpoleEnv
 from rllab.envs.normalized_env import normalize
@@ -11,10 +7,7 @@ from rllab.misc.instrument import stub, run_experiment_lite
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from sandbox.rocky.tf.policies.deterministic_mlp_policy import DeterministicMLPPolicy
 
-# from learning_active_learning.learning_ask_help.DDPG.hierarchical_deterministic_mlp_policy import LayeredDeterministicMLPPolicy
 from hierarchical_deterministic_mlp_policy import LayeredDeterministicMLPPolicy
-
-# from learning_active_learning.learning_ask_help.DDPG.agent_action_selection import AgentStrategy
 from agent_action_selection import AgentStrategy
 
 #if using the categorial policy to get action probabilities
