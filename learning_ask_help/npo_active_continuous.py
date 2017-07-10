@@ -102,6 +102,17 @@ class NPO(BatchPolopt):
             "observations", "actions", "advantages"
         ))
 
+        agent_only_all_input_values = tuple(ext.extract(
+            agent_samples_data,
+            "observations", "actions", "advantages"
+        ))
+
+        oracle_only_all_input_values = tuple(ext.extract(
+            oracle_samples_data,
+            "observations", "actions", "advantages"
+        ))
+
+
 
         agent_infos = samples_data["agent_infos"]
         state_info_list = [agent_infos[k] for k in self.policy.state_info_keys]
@@ -109,18 +120,15 @@ class NPO(BatchPolopt):
         all_input_values += tuple(state_info_list) + tuple(dist_info_list)
 
 
-        agent_only_infos = agent_samples_data["agent_only_infos"]
+        agent_only_infos = agent_samples_data["agent_infos"]
         agent_only_state_info_list = [agent_only_infos[k] for k in self.policy.state_info_keys]
         agent_only_dist_info_list = [agent_only_infos[k] for k in self.policy.distribution.dist_info_keys]
         agent_only_all_input_values += tuple(agent_only_state_info_list) + tuple(agent_only_dist_info_list)
 
-        oracle_only_infos = agent_samples_data["agent_only_infos"]
+        oracle_only_infos = agent_samples_data["agent_infos"]
         oracle_only_state_info_list = [oracle_only_infos[k] for k in self.policy.state_info_keys]
         oracle_only_dist_info_list = [oracle_only_infos[k] for k in self.policy.distribution.dist_info_keys]
         oracle_only_all_input_values += tuple(oracle_only_state_info_list) + tuple(oracle_only_dist_info_list)
-
-        import pdb; pdb.set_trace()
-
 
 
         if self.policy.recurrent:

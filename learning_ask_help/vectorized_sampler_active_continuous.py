@@ -149,7 +149,7 @@ class VectorizedSampler(BaseSampler):
                             actions=self.env_spec.action_space.flatten_n(agent_only_running_paths[idx]["actions"]),
                             rewards=tensor_utils.stack_tensor_list(agent_only_running_paths[idx]["rewards"]),
                             env_infos=tensor_utils.stack_tensor_dict_list(agent_only_running_paths[idx]["env_infos"]),
-                            agent_infos=tensor_utils.stack_tensor_dict_list(agent_only_running_paths[idx]["agent_only_infos"]),
+                            agent_infos=tensor_utils.stack_tensor_dict_list(agent_only_running_paths[idx]["agent_infos"]),
                         ))
                         n_samples += len(agent_only_running_paths[idx]["rewards"])
                         agent_only_running_paths[idx] = None
@@ -180,7 +180,7 @@ class VectorizedSampler(BaseSampler):
                             actions=self.env_spec.action_space.flatten_n(oracle_only_running_paths[idx]["actions"]),
                             rewards=tensor_utils.stack_tensor_list(oracle_only_running_paths[idx]["rewards"]),
                             env_infos=tensor_utils.stack_tensor_dict_list(oracle_only_running_paths[idx]["env_infos"]),
-                            agent_infos=tensor_utils.stack_tensor_dict_list(oracle_only_running_paths[idx]["oracle_infos"]),
+                            agent_infos=tensor_utils.stack_tensor_dict_list(oracle_only_running_paths[idx]["agent_infos"]),
                         ))
                         n_samples += len(oracle_only_running_paths[idx]["rewards"])
                         oracle_only_running_paths[idx] = None
