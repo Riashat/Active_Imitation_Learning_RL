@@ -252,16 +252,16 @@ class DDPG(RLAlgorithm):
                         pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
 
 
-                    if sigma < 1:
-                        agent_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
-                    else:
-                        oracle_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
-
-
                     # if sigma < 1:
-                    #     oracle_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
-                    # else:
                     #     agent_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
+                    # else:
+                    #     oracle_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
+
+
+                    if sigma < 1:
+                        oracle_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
+                    else:
+                        agent_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
 
 
 
