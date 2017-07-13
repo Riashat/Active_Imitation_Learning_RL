@@ -299,8 +299,6 @@ class DDPG(RLAlgorithm):
         )
 
 
-
-
     def do_training(self, itr, batch):
 
         obs, actions, rewards, next_obs, terminals = ext.extract(

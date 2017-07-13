@@ -83,12 +83,8 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
     @overrides
     def get_action(self, observation):
         flat_obs = self.observation_space.flatten(observation)
-
-        #get continuous action output
         action = self._f_prob([flat_obs])[0]
-
-        #get discrete action output - sigmoid probability in this case
-        binary_action = self._f_prob_binary([flat_obs])[0]# tf.reshape(self.prob_network.output_binary, [-1])
+        binary_action = self._f_prob_binary([flat_obs])[0]
 
         return action, binary_action, dict()
 
@@ -97,15 +93,14 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
     @overrides
     def get_actions(self, observations):
         flat_obs = self.observation_space.flatten_n(observations)
- 
-        import pdb; pdb.set_trace()
-
         actions = self._f_prob(flat_obs)
-        
-        binary_action = self._f_prob_binary([flat_obs])[0]
+        return actions, dict()
 
-
-        return actions, binary_action, dict()
+    # def get_actions(self, observations):
+    #     flat_obs = self.observation_space.flatten_n(observations)
+    #     actions = self._f_prob(flat_obs)
+    #     binary_action = self._f_prob_binary([flat_obs])
+    #     return actions, binary_action, dict()
 
 
 

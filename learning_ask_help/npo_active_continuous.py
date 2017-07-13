@@ -67,7 +67,11 @@ class NPO(BatchPolopt):
 
         dist_info_vars = self.policy.dist_info_sym(obs_var, state_info_vars)
         kl = dist.kl_sym(old_dist_info_vars, dist_info_vars)
+
+
         lr = dist.likelihood_ratio_sym(action_var, old_dist_info_vars, dist_info_vars)
+
+
         if is_recurrent:
             mean_kl = tf.reduce_sum(kl * valid_var) / tf.reduce_sum(valid_var)
             surr_loss = - tf.reduce_sum(lr * advantage_var * valid_var) / tf.reduce_sum(valid_var)
@@ -75,11 +79,16 @@ class NPO(BatchPolopt):
             mean_kl = tf.reduce_mean(kl)
             surr_loss = - tf.reduce_mean(lr * advantage_var)
 
+
+
         input_list = [
                          obs_var,
                          action_var,
                          advantage_var,
                      ] + state_info_vars_list + old_dist_info_vars_list
+
+
+                     
         if is_recurrent:
             input_list.append(valid_var)
 
@@ -92,10 +101,11 @@ class NPO(BatchPolopt):
         )
         return dict()
 
+
+
+
     @overrides
     def optimize_policy(self, itr, samples_data, agent_samples_data, oracle_samples_data):
-
-
 
         all_input_values = tuple(ext.extract(
             samples_data,
@@ -112,8 +122,6 @@ class NPO(BatchPolopt):
             "observations", "actions", "advantages"
         ))
 
-
-
         agent_infos = samples_data["agent_infos"]
         state_info_list = [agent_infos[k] for k in self.policy.state_info_keys]
         dist_info_list = [agent_infos[k] for k in self.policy.distribution.dist_info_keys]
@@ -125,10 +133,11 @@ class NPO(BatchPolopt):
         agent_only_dist_info_list = [agent_only_infos[k] for k in self.policy.distribution.dist_info_keys]
         agent_only_all_input_values += tuple(agent_only_state_info_list) + tuple(agent_only_dist_info_list)
 
-        oracle_only_infos = agent_samples_data["agent_infos"]
+        oracle_only_infos = oracle_samples_data["agent_infos"]
         oracle_only_state_info_list = [oracle_only_infos[k] for k in self.policy.state_info_keys]
         oracle_only_dist_info_list = [oracle_only_infos[k] for k in self.policy.distribution.dist_info_keys]
         oracle_only_all_input_values += tuple(oracle_only_state_info_list) + tuple(oracle_only_dist_info_list)
+
 
 
         if self.policy.recurrent:
@@ -137,12 +146,19 @@ class NPO(BatchPolopt):
 
         logger.log("Computing loss before")
         loss_before = self.optimizer.loss(all_input_values)
+
+
         logger.log("Computing KL before")
         mean_kl_before = self.optimizer.constraint_val(all_input_values)
+
+
         logger.log("Optimizing")
         self.optimizer.optimize(all_input_values)
+
         logger.log("Computing KL after")
         mean_kl = self.optimizer.constraint_val(all_input_values)
+
+
         logger.log("Computing loss after")
         loss_after = self.optimizer.loss(all_input_values)
         logger.record_tabular('LossBefore', loss_before)
@@ -151,6 +167,8 @@ class NPO(BatchPolopt):
         logger.record_tabular('MeanKL', mean_kl)
         logger.record_tabular('dLoss', loss_before - loss_after)
         return dict()
+
+
 
     @overrides
     def get_itr_snapshot(self, itr, samples_data):

@@ -37,10 +37,8 @@ class VectorizedSampler(BaseSampler):
         self.vec_env.terminate()
 
 
-    """
-    this returns PATHS - same as Trajectories?
-    These samples are used for estimating the gradient
-    """
+
+
     # def obtain_samples(self, itr, oracle_policy, env_action_space):
     def obtain_samples(self, itr, oracle_policy):
         logger.log("Obtaining samples for iteration %d..." % itr)
@@ -70,11 +68,8 @@ class VectorizedSampler(BaseSampler):
             t = time.time()
             policy.reset(dones)
 
-            #modifly POLICY.GET_ACTIONS HERE
             agent_actions, binary_actions, agent_infos = policy.get_actions(obses)
-
             sigma = np.round(binary_actions)
-
             oracle_actions, oracle_agent_infos = oracle_policy.get_actions(obses)
 
             #take action based on either oracle action or agent action

@@ -82,9 +82,6 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
             l_mean = mean_network.output_layer
             obs_var = mean_network.input_layer.input_var
 
-            # l_mean_binary = mean_network.output_layer_binary
-
-
 
             if std_network is not None:
                 l_std_param = std_network.output_layer
@@ -139,22 +136,14 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
             #
             # self._mean_var, self._log_std_var = mean_var, log_std_var
 
-
-
-
-
             self._l_mean = l_mean
             self._l_std_param = l_std_param
 
-            # self._l_mean_binary = l_mean_binary
-
             self._dist = DiagonalGaussian(action_dim)
-
 
             #originally here!!!!
             LayersPowered.__init__(self, [l_mean, l_std_param])
             super(LayeredGaussianMLPPolicy, self).__init__(env_spec)
-
 
             dist_info_sym = self.dist_info_sym(mean_network.input_layer.input_var, dict())
             mean_var = dist_info_sym["mean"]
@@ -165,18 +154,14 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
                 outputs=[mean_var, log_std_var],
             )
 
-
             self._f_prob_binary = tensor_utils.compile_function(
                 [mean_network.input_layer.input_var],
                 L.get_output(mean_network.output_layer_binary, deterministic=True)
             )
 
-
             self.output_layer_binary = mean_network.output_layer_binary
             self.binary_output = L.get_output(mean_network.output_layer_binary, deterministic=True)
 
-            # LayersPowered.__init__(self, [l_mean, l_std_param])
-            # super(LayeredGaussianMLPPolicy, self).__init__(env_spec)
 
 
     @property
@@ -211,17 +196,12 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
 
 
     def get_actions(self, observations):
-
-
-        ## flat_obs - (2,11)
+        
         flat_obs = self.observation_space.flatten_n(observations)
         means, log_stds = self._f_dist(flat_obs)
-
         binary_action = self._f_prob_binary(observations)        
-
         rnd = np.random.normal(size=means.shape)
         actions = rnd * np.exp(log_stds) + means
-
 
         return actions, binary_action, dict(mean=means, log_std=log_stds)
 

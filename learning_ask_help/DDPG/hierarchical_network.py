@@ -90,7 +90,6 @@ class HierarchicalMLP(LayersPowered, Serializable):
             if batch_normalization:
                 l_out = L.batch_norm(l_out)
 
-
             self._layers.append(l_out)
             self._l_in = l_in
 

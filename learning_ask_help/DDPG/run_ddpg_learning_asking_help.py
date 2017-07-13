@@ -1,7 +1,7 @@
 from oracle_ddpg import DDPG as Oracle_DDPG
 from agent_ddpg_active_rl import DDPG as Agent_DDPG
 
-from rllab.envs.box2d.cartpole_env import CartpoleEnv
+# from rllab.envs.box2d.cartpole_env import CartpoleEnv
 from rllab.envs.normalized_env import normalize
 from rllab.misc.instrument import stub, run_experiment_lite
 from rllab.exploration_strategies.ou_strategy import OUStrategy
@@ -10,8 +10,6 @@ from sandbox.rocky.tf.policies.deterministic_mlp_policy import DeterministicMLPP
 from hierarchical_deterministic_mlp_policy import LayeredDeterministicMLPPolicy
 from agent_action_selection import AgentStrategy
 
-#if using the categorial policy to get action probabilities
-# doesnt work for continuous control MuJoCo environments
 from sandbox.rocky.tf.policies.categorical_mlp_policy import CategoricalMLPPolicy
 
 from sandbox.rocky.tf.q_functions.continuous_mlp_q_function import ContinuousMLPQFunction
@@ -38,13 +36,15 @@ ext.set_seed(1)
 
 supported_gym_envs = ["MountainCarContinuous-v0", "Hopper-v1", "Walker2d-v1", "Humanoid-v1", "Reacher-v1", "HalfCheetah-v1", "Swimmer-v1", "HumanoidStandup-v1"]
 
-other_env_class_map  = { "Cartpole" :  CartpoleEnv}
+# other_env_class_map  = { "Cartpole" :  CartpoleEnv}
 
-if args.env in supported_gym_envs:
-    gymenv = GymEnv(args.env, force_reset=True, record_video=False, record_log=False)
-    # gymenv.env.seed(1)
-else:
-    gymenv = other_env_class_map[args.env]()
+# if args.env in supported_gym_envs:
+#     gymenv = GymEnv(args.env, force_reset=True, record_video=False, record_log=False)
+#     # gymenv.env.seed(1)
+# else:
+#     gymenv = other_env_class_map[args.env]()
+
+gymenv = GymEnv(args.env, force_reset=True, record_video=False, record_log=False)
 
 
 
@@ -87,6 +87,8 @@ oracle_qf = ContinuousMLPQFunction(env_spec=env.spec,
 ddpg_type = {"oracle" : Oracle_DDPG, "agent" : Agent_DDPG }
 
 
+
+
 oracle_ddpg_class = ddpg_type[args.oracle]
 agent_ddpg_class = ddpg_type[args.agent]
 
@@ -94,14 +96,6 @@ agent_ddpg_class = ddpg_type[args.agent]
 ## loops:
 num_experiments = 1
 batch_size_values = [64]
-
-
-"""
-Debugging tool
-"""
-# import pdb; pdb.set_trace()
-#to quit from it : press q
-
 
 
 for b in range(len(batch_size_values)): 
@@ -179,7 +173,7 @@ for b in range(len(batch_size_values)):
             snapshot_mode="last",
             # Specifies the seed for the experiment. If this is not provided, a random seed
             # will be used
-            exp_name="Active_RL/" + "DDPG/",
+            exp_name="Active_RL/" + "Agent_DDPG/",
             seed=1,
             plot=args.plot,
         )

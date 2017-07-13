@@ -132,10 +132,8 @@ class BatchPolopt(RLAlgorithm):
 
                 paths = self.obtain_samples(itr, self.oracle_policy)
 
-
                 logger.log("Processing samples...")
                 samples_data = self.process_samples(itr, paths)
-
 
                 logger.log("Logging diagnostics...")
                 self.log_diagnostics(paths)
@@ -145,19 +143,15 @@ class BatchPolopt(RLAlgorithm):
                 self.optimize_policy(itr, samples_data)
                 logger.log("Saving snapshot...")
 
-
                 params = self.get_itr_snapshot(itr, samples_data)  # , **kwargs)
                 if self.store_paths:
                     params["paths"] = samples_data["paths"]
-
 
                 logger.save_itr_params(itr, params)
                 logger.log("Saved")
                 logger.record_tabular('Time', time.time() - start_time)
                 logger.record_tabular('ItrTime', time.time() - itr_start_time)
                 logger.dump_tabular(with_prefix=False)
-
-
 
                 if self.plot:
                     rollout(self.env, self.policy, animated=True, max_path_length=self.max_path_length)

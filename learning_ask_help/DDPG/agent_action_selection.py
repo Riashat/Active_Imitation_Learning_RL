@@ -56,10 +56,7 @@ class AgentStrategy(ExplorationStrategy, Serializable):
     def get_action(self, t, observation, policy, **kwargs):
         #action here is from the policy MLP function
         action, binary_action, _ = policy.get_action(observation)
-        #action, binary_action, _ = policy.get_actions(observation)
-
         ou_state = self.evolve_state()
-
         continuous_action = np.clip(action + ou_state, self.action_space.low, self.action_space.high)
 
         return continuous_action, binary_action
