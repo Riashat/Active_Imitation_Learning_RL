@@ -35,7 +35,7 @@ class DDPG(RLAlgorithm):
             batch_size=32,
             n_epochs=200,
             epoch_length=1000,
-            min_pool_size = 500,
+            min_pool_size = 100,
             replay_pool_size=1000000,
             replacement_prob=1.0,
             discount=0.99,
@@ -153,6 +153,8 @@ class DDPG(RLAlgorithm):
         if self.plot:
             plotter.init_plot(self.env, self.policy)
 
+
+
     @overrides
     def train(self):
         with tf.Session() as sess:
@@ -184,6 +186,9 @@ class DDPG(RLAlgorithm):
                 action_dim=self.env.action_space.flat_dim,
                 replacement_prob=self.replacement_prob,
             )
+
+
+            self.tf_sigma = tf.Variable(tf.random_normal([1]), name='m')
 
             self.start_worker()
             self.init_opt()
@@ -230,12 +235,14 @@ class DDPG(RLAlgorithm):
                     
                     ### both continuous 
                     agent_action, binary_action = self.agent_strategy.get_action_with_binary(itr, observation, policy=sample_policy)  # qf=qf)
+
                     sigma = np.round(binary_action)
+                    self.tf_sigma = tf.round(binary_action)
+
 
                     ### getting actons from the oracle policy 
 
                     oracle_action = self.get_oracle_action(itr, observation, policy=oracle_policy)
-
 
                     #take action based on either oracle action or agent action
                     action = sigma * agent_action + (1 - sigma) * oracle_action
@@ -335,6 +342,7 @@ class DDPG(RLAlgorithm):
             dtype=tf.float32,
         )
 
+
         qf_weight_decay_term = 0.5 * self.qf_weight_decay * \
                                sum([tf.reduce_sum(tf.square(param)) for param in
                                     self.qf.get_params(regularizable=True)])
@@ -351,7 +359,7 @@ class DDPG(RLAlgorithm):
 
 
         policy_qval = self.qf.get_qval_sym(
-            obs, self.policy.get_action_sym(obs),
+            obs, self.policy.get_action_sym(obs, self.tf_sigma),
             deterministic=True
         )
 
@@ -360,7 +368,9 @@ class DDPG(RLAlgorithm):
         policy_reg_surr = policy_surr + policy_weight_decay_term
 
         qf_input_list = [yvar, obs, action]
+
         policy_input_list = [obs]
+
 
 
         # y need to be computed first
@@ -389,7 +399,7 @@ class DDPG(RLAlgorithm):
 
 
         policy_qval_gate = self.qf.get_qval_sym(
-            obs, self.policy.get_action_sym_gate(obs),
+            obs, self.policy.get_action_sym_gate(obs, self.tf_sigma),
             deterministic=True
         )
 
@@ -524,7 +534,6 @@ class DDPG(RLAlgorithm):
 
 
         # gf_loss, gval, _ = self.f_train_gf(obs_oracle_only, actions_oracle_only, ys_oracle_only, ys_agent_only, obs_agent_only, actions_agent_only)
-
 
 
         """

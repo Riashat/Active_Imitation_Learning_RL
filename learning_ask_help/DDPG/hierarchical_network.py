@@ -94,6 +94,7 @@ class HierarchicalMLP(LayersPowered, Serializable):
             self._l_in = l_in
 
             self._l_out = l_out
+            
             self._l_out_binary = l_out_binary
 
             self._output_binary = L.get_output(l_out_binary)

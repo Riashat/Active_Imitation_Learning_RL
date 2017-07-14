@@ -1,5 +1,8 @@
+### this script to run DDPG to generate expert policies
+### or use any other trained expert policies
+
 from oracle_ddpg import DDPG as Oracle_DDPG
-from agent_ddpg_active_rl import DDPG as Agent_DDPG
+
 
 # from rllab.envs.box2d.cartpole_env import CartpoleEnv
 from rllab.envs.normalized_env import normalize
@@ -30,6 +33,7 @@ args = parser.parse_args()
 
 stub(globals())
 ext.set_seed(1)
+
 
 supported_gym_envs = ["MountainCarContinuous-v0", "Hopper-v1", "Walker2d-v1", "Humanoid-v1", "Reacher-v1", "HalfCheetah-v1", "Swimmer-v1", "HumanoidStandup-v1"]
 
@@ -68,43 +72,38 @@ oracle_ddpg_class = ddpg_type[args.oracle]
 
 
 
-num_experiments = 1    
-for e in range(num_experiments):
+oracle_algo = oracle_ddpg_class(
+    env=env,
+    policy=oracle_policy,
+    es=es,
+    qf=oracle_qf,
+    batch_size=64,
+    max_path_length=env.horizon,
+    epoch_length=1000,
+    min_pool_size=10000,
+    n_epochs=args.num_epochs,
+    discount=0.99,
+    scale_reward=1.0,
+    qf_learning_rate=1e-3,
+    policy_learning_rate=1e-4,
+    # Uncomment both lines (this and the plot parameter below) to enable plotting
+    # plot=args.plot,
+)
 
-    """
-    Training the oracle expert policy
-    """
-
-    oracle_algo = oracle_ddpg_class(
-        env=env,
-        policy=oracle_policy,
-        es=es,
-        qf=oracle_qf,
-        batch_size=64,
-        max_path_length=env.horizon,
-        epoch_length=1000,
-        min_pool_size=10000,
-        n_epochs=args.num_epochs,
-        discount=0.99,
-        scale_reward=1.0,
-        qf_learning_rate=1e-3,
-        policy_learning_rate=1e-4,
-        # Uncomment both lines (this and the plot parameter below) to enable plotting
-        # plot=args.plot,
-    )
+run_experiment_lite(
+    oracle_algo.train(),
+    log_dir=args.data_dir,
+    # Number of parallel workers for sampling
+    n_parallel=1,
+    # Only keep the snapshot parameters for the last iteration
+    snapshot_mode="last",
+    # Specifies the seed for the experiment. If this is not provided, a random seed
+    # will be used
+    exp_name="Active_RL/" + "Oracle_DDPG/",
+    seed=1,
+    # plot=args.plot,
+)
 
 
-    run_experiment_lite(
-        oracle_algo.train(),
-        log_dir=args.data_dir,
-        # Number of parallel workers for sampling
-        n_parallel=1,
-        # Only keep the snapshot parameters for the last iteration
-        snapshot_mode="last",
-        # Specifies the seed for the experiment. If this is not provided, a random seed
-        # will be used
-        exp_name="Active_RL/" + "Oracle_DDPG/",
-        seed=1,
-        # plot=args.plot,
-    )
+
 

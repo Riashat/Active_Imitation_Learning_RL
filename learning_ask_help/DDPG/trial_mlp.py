@@ -67,7 +67,6 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
 
 
         self.output_layer_binary = prob_network.output_layer_binary
-        #self.output_layer_binary = tf.round(prob_network.output_layer_binary)
 
         self.binary_output = L.get_output(prob_network.output_layer_binary, deterministic=True)
 
@@ -120,35 +119,19 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
 
 
     ## obs_var here is oracle_samples_only
-    def get_action_sym_gate(self, obs_var):
+    def get_action_sym_gate(self, obs_var, out_bin):
         
-        ### TO DO : out_bin right now is a soft gate and NOT a hard gate
-        out_bin = L.get_output(self.prob_network.output_layer_binary, obs_var)
+        #out_bin = L.get_output(self.prob_network.output_layer_binary, obs_var)
         oracle_policy_sym = L.get_output(self.oracle_policy.prob_network.output_layer, obs_var)
 
-        ### here, when out_bin is 1, stop gradients with agent samples
-        ### and allow oracle samples to flow for training beta(s)
-        
-        ### have stop gradient for oracle samples on the agent policy
-        ### we dont want to train pi(s) with the oracle samples
         return tf.stop_gradient(L.get_output(self.prob_network.output_layer, obs_var)) * (out_bin) + (1.0-out_bin) * tf.stop_gradient(oracle_policy_sym) 
 
 
 
     ## obs_var here is agent_samples only
-    def get_action_sym(self, obs_var):
-
-        ### TO DO : out_bin right now is a soft gate and NOT a hard gate
-        out_bin = L.get_output(self.prob_network.output_layer_binary, obs_var)
-
+    def get_action_sym(self, obs_var, out_bin):
+        #out_bin = L.get_output(self.prob_network.output_layer_binary, obs_var)
         oracle_policy_sym = L.get_output(self.oracle_policy.prob_network.output_layer, obs_var)
 
-        ### Why hold out the oracle samples when training pi(s) anyway???
-
-        ### explanation for line below:
-        ### we do not have stop gradients for agent policy here, becase here we have agent samples
-        ### and we train the agent policy with the agent samples only
-        ### here beta(s) policy is also updated with the agent samples
-        ### and above, beta(s) is updated with the oracle samples
         return (out_bin) * L.get_output(self.prob_network.output_layer, obs_var)  + (1.0-out_bin) * tf.stop_gradient(oracle_policy_sym) 
-        #return L.get_output(self.prob_network.output_layer, obs_var)
+
