@@ -123,8 +123,8 @@ class DDPG(RLAlgorithm):
         #     FirstOrderOptimizer(
         #         update_method='adam',
         #         learning_rate=policy_learning_rate,
-        #     )        
-            
+        #     )
+
         self.policy_learning_rate = policy_learning_rate
         self.policy_updates_ratio = policy_updates_ratio
         self.eval_samples = eval_samples
@@ -177,7 +177,7 @@ class DDPG(RLAlgorithm):
                 action_dim=self.env.action_space.flat_dim,
                 replacement_prob=self.replacement_prob,
             )
-                
+
             oracle_only_pool = SimpleReplayPool(
                 max_pool_size=self.replay_pool_size,
                 observation_dim=self.env.observation_space.flat_dim,
@@ -227,18 +227,18 @@ class DDPG(RLAlgorithm):
                         initial = True
                     else:
                         initial = False
-                    
-                    ### both continuous 
+
+                    ### both continuous
                     agent_action, binary_action = self.agent_strategy.get_action_with_binary(itr, observation, policy=sample_policy)  # qf=qf)
                     sigma = np.round(binary_action)
 
-                    ### getting actons from the oracle policy 
+                    ### getting actons from the oracle policy
 
                     oracle_action = self.get_oracle_action(itr, observation, policy=oracle_policy)
 
 
                     #take action based on either oracle action or agent action
-                    action = sigma * agent_action + (1 - sigma) * oracle_action
+                    action = sigma[:,0] * agent_action + sigma[:,1] * oracle_action
 
                     next_observation, reward, terminal, _ = self.env.step(action)
                     path_length += 1
@@ -251,8 +251,8 @@ class DDPG(RLAlgorithm):
                         # only include the terminal transition in this case if the flag was set
                         if self.include_horizon_terminal_transitions:
                             pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
-                    
-                    #### pool here - filled with both agent and oracle tuples - should be used for training the gating function 
+
+                    #### pool here - filled with both agent and oracle tuples - should be used for training the gating function
                     else:
                         pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
 
@@ -303,7 +303,9 @@ class DDPG(RLAlgorithm):
 
 
 
-    def init_opt(self):
+    def init_opt(self, lambda_s = 100,
+                 lambda_v = 10,
+                 tau = .5):
 
         with tf.variable_scope("target_policy"):
             target_policy = Serializable.clone(self.policy)
@@ -388,14 +390,39 @@ class DDPG(RLAlgorithm):
 
 
 
-        policy_qval_gate = self.qf.get_qval_sym(
-            obs, self.policy.get_action_sym_gate(obs),
+        policy_qval_novice = self.qf.get_qval_sym(
+            obs, self.policy.get_novice_policy_sym(obs),
             deterministic=True
         )
 
-        policy_surr_gate = -tf.reduce_mean(policy_qval_gate)
-        policy_reg_surr_gate = policy_surr_gate + policy_weight_decay_term
+        gating_network = self.policy.get_action_binary_gate_sym(obs)
 
+        policy_qval_oracle = self.qf.get_qval_sym(
+            obs, self.policy.get_action_oracle_sym(obs),
+            deterministic=True
+        )
+
+
+        # policy_surr_gate = -tf.reduce_mean(policy_qval_gate)
+
+        combined_losses = tf.concat([policy_qval_novice, policy_qval_oracle], axis=1)
+
+        combined_loss = -tf.reduce_mean(tf.reshape(tf.reduce_mean(combined_losses_nov * gating_network, axis=1), [-1, 1]), axis=0)
+
+        lambda_s_loss = tf.constant(0.0)
+
+        if lambda_s > 0.0:
+            lambda_s_loss = lambda_s * (tf.reduce_mean((tf.reduce_mean(gating_network, axis=0) - tau)**2) +
+                                    tf.reduce_mean((tf.reduce_mean(gating_network, axis=1) - tau)**2))
+
+        lambda_v_loss = tf.constant(0.0)
+
+        if lambda_v > 0.0:
+            mean0, var0 = tf.nn.moments(gating_network, axes=[0])
+            mean, var1 = tf.nn.moments(gating_network, axes=[1])
+            lambda_v_loss = - lambda_v * (tf.reduce_mean(var0) + tf.reduce_mean(var1))
+
+        policy_reg_surr_gate = combined_loss + policy_weight_decay_term + lambda_s_loss + lambda_v_loss
 
         gf_input_list = [obs_oracle, action_oracle, yvar_oracle] + qf_input_list
 
@@ -456,7 +483,7 @@ class DDPG(RLAlgorithm):
             "terminals"
         )
 
-        target_qf = self.opt_info["target_qf"]        
+        target_qf = self.opt_info["target_qf"]
         #target Policy
         target_policy = self.opt_info["target_policy"]
         #oracle Policy
@@ -464,7 +491,7 @@ class DDPG(RLAlgorithm):
 
 
         """
-        TO DO : Should we also use the 
+        TO DO : Should we also use the
         binary actions from beta(s) here?
         """
 
@@ -502,7 +529,7 @@ class DDPG(RLAlgorithm):
             "observations", "actions", "rewards", "next_observations",
             "terminals"
         )
-        
+
         ### extracting oracle only batch here
         obs_oracle_only, actions_oracle_only, rewards_oracle_only, next_obs_oracle_only, terminals_oracle_only = ext.extract(
             oracle_batch,
@@ -547,7 +574,7 @@ class DDPG(RLAlgorithm):
         """
         Training beta(s) using both oracle and agent samples
         but we trained beta(s) with agent samples already
-        so training beta(s) with the oracle samples only here 
+        so training beta(s) with the oracle samples only here
         (obs_oracle_only)
         """
         while self.train_policy_itr > 0:
@@ -665,7 +692,7 @@ class DDPG(RLAlgorithm):
         return np.clip(action, self.env.action_space.low, self.env.action_space.high)
 
 
-    ### to reinitialise variables in TF graph 
+    ### to reinitialise variables in TF graph
     ### which has not been initailised so far
     def initialize_uninitialized(self, sess):
         global_vars          = tf.global_variables()
@@ -675,6 +702,3 @@ class DDPG(RLAlgorithm):
         print([str(i.name) for i in not_initialized_vars]) # only for testing
         if len(not_initialized_vars):
             sess.run(tf.variables_initializer(not_initialized_vars))
-
-
-
