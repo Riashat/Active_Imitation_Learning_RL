@@ -231,6 +231,7 @@ class DDPG(RLAlgorithm):
                     ### both continuous
                     agent_action, binary_action = self.agent_strategy.get_action_with_binary(itr, observation, policy=sample_policy)  # qf=qf)
                     sigma = np.round(binary_action)
+                    # print(sigma)
 
                     ### getting actons from the oracle policy
 
@@ -238,7 +239,7 @@ class DDPG(RLAlgorithm):
 
 
                     #take action based on either oracle action or agent action
-                    action = sigma[:,0] * agent_action + sigma[:,1] * oracle_action
+                    action = sigma[0] * agent_action + sigma[1] * oracle_action
 
                     next_observation, reward, terminal, _ = self.env.step(action)
                     path_length += 1
@@ -251,16 +252,18 @@ class DDPG(RLAlgorithm):
                         # only include the terminal transition in this case if the flag was set
                         if self.include_horizon_terminal_transitions:
                             pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
+                            if sigma[1] > .5:
+                                oracle_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
+                            else:
+                                agent_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
 
                     #### pool here - filled with both agent and oracle tuples - should be used for training the gating function
                     else:
                         pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
-
-
-                    if sigma < 1:
-                        oracle_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
-                    else:
-                        agent_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
+                        if sigma[1] > .5:
+                            oracle_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
+                        else:
+                            agent_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
 
 
 
@@ -351,15 +354,15 @@ class DDPG(RLAlgorithm):
                                         for param in self.policy.get_params(regularizable=True)])
 
 
-
-        policy_qval = self.qf.get_qval_sym(
-            obs, self.policy.get_action_sym(obs),
-            deterministic=True
-        )
-
-        policy_surr = -tf.reduce_mean(policy_qval)
-
-        policy_reg_surr = policy_surr + policy_weight_decay_term
+        #
+        # policy_qval = self.qf.get_qval_sym(
+        #     obs, self.policy.get_action_sym(obs),
+        #     deterministic=True
+        # )
+        #
+        # policy_surr = -tf.reduce_mean(policy_qval)
+        #
+        # policy_reg_surr = policy_surr + policy_weight_decay_term
 
         qf_input_list = [yvar, obs, action]
         policy_input_list = [obs]
@@ -405,9 +408,9 @@ class DDPG(RLAlgorithm):
 
         # policy_surr_gate = -tf.reduce_mean(policy_qval_gate)
 
-        combined_losses = tf.concat([policy_qval_novice, policy_qval_oracle], axis=1)
+        combined_losses = tf.concat([tf.reshape(policy_qval_novice, [-1, 1]), tf.reshape(policy_qval_oracle, [-1, 1])], axis=1)
 
-        combined_loss = -tf.reduce_mean(tf.reshape(tf.reduce_mean(combined_losses_nov * gating_network, axis=1), [-1, 1]), axis=0)
+        combined_loss = -tf.reduce_mean(tf.reshape(tf.reduce_mean(combined_losses * gating_network, axis=1), [-1, 1]), axis=0)
 
         lambda_s_loss = tf.constant(0.0)
 
@@ -421,8 +424,9 @@ class DDPG(RLAlgorithm):
             mean0, var0 = tf.nn.moments(gating_network, axes=[0])
             mean, var1 = tf.nn.moments(gating_network, axes=[1])
             lambda_v_loss = - lambda_v * (tf.reduce_mean(var0) + tf.reduce_mean(var1))
+        policy_surr = combined_loss
 
-        policy_reg_surr_gate = combined_loss + policy_weight_decay_term + lambda_s_loss + lambda_v_loss
+        policy_reg_surr = combined_loss + policy_weight_decay_term + lambda_s_loss + lambda_v_loss
 
         gf_input_list = [obs_oracle, action_oracle, yvar_oracle] + qf_input_list
 
@@ -452,15 +456,15 @@ class DDPG(RLAlgorithm):
         """
         f_train_policy = tensor_utils.compile_function(
             inputs=policy_input_list,
-            outputs=[policy_surr, self.policy_update_method._train_op],
+            outputs=[policy_surr, self.policy_update_method._train_op, gating_network],
         )
 
 
 
-        f_train_policy_gate = tensor_utils.compile_function(
-            inputs=policy_input_list,
-            outputs=[policy_surr_gate, self.policy_update_method._train_op],
-        )
+        # f_train_policy_gate = tensor_utils.compile_function(
+        #     inputs=policy_input_list,
+        #     outputs=[policy_surr_gate, self.policy_update_method._train_op],
+        # )
 
         self.opt_info = dict(
             f_train_qf=f_train_qf,
@@ -468,7 +472,7 @@ class DDPG(RLAlgorithm):
             target_qf=target_qf,
             target_policy=target_policy,
             oracle_policy=oracle_policy,
-            f_train_policy_gate=f_train_policy_gate
+            # f_train_policy_gate=f_train_policy_gate
         )
 
 
@@ -560,12 +564,14 @@ class DDPG(RLAlgorithm):
         while self.train_policy_itr > 0:
             f_train_policy = self.opt_info["f_train_policy"]
             ### agent samples only here
-            policy_surr, _ = f_train_policy(obs_agent_only)
+            policy_surr, _ , gating_outputs= f_train_policy(obs_agent_only)
 
             target_policy.set_param_values(
                 target_policy.get_param_values() * (1.0 - self.soft_target_tau) +
                 self.policy.get_param_values() * self.soft_target_tau)
             self.policy_surr_averages.append(policy_surr)
+            logger.log("Gating outputs")
+            logger.log(gating_outputs)
             self.train_policy_itr -= 1
             train_policy_itr += 1
 
@@ -577,17 +583,17 @@ class DDPG(RLAlgorithm):
         so training beta(s) with the oracle samples only here
         (obs_oracle_only)
         """
-        while self.train_policy_itr > 0:
-            f_train_policy_gate = self.opt_info["f_train_policy_gate"]
-
-            policy_surr, _ = f_train_policy_gate(obs_oracle_only)
-
-            target_policy.set_param_values(
-                target_policy.get_param_values() * (1.0 - self.soft_target_tau) +
-                self.policy.get_param_values() * self.soft_target_tau)
-            self.policy_surr_averages.append(policy_surr)
-            self.train_policy_itr -= 1
-            train_policy_itr += 1
+        # while self.train_policy_itr > 0:
+        #     f_train_policy_gate = self.opt_info["f_train_policy_gate"]
+        #
+        #     policy_surr, _ = f_train_policy_gate(obs_oracle_only)
+        #
+        #     target_policy.set_param_values(
+        #         target_policy.get_param_values() * (1.0 - self.soft_target_tau) +
+        #         self.policy.get_param_values() * self.soft_target_tau)
+        #     self.policy_surr_averages.append(policy_surr)
+        #     self.train_policy_itr -= 1
+        #     train_policy_itr += 1
 
         return 1, train_policy_itr # number of itrs qf, policy are trained
 
