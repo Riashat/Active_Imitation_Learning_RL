@@ -252,31 +252,21 @@ class DDPG(RLAlgorithm):
                         # only include the terminal transition in this case if the flag was set
                         if self.include_horizon_terminal_transitions:
                             pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
-                            if sigma[1] > .5:
-                                oracle_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
-                            else:
-                                agent_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
 
                     #### pool here - filled with both agent and oracle tuples - should be used for training the gating function
                     else:
                         pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
-                        if sigma[1] > .5:
-                            oracle_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
-                        else:
-                            agent_only_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
-
-
 
                     observation = next_observation
 
-                    if pool.size >= self.min_pool_size and agent_only_pool.size >= self.min_pool_size and oracle_only_pool.size >= self.min_pool_size:
+                    if pool.size >= self.min_pool_size:
                     # if pool.size >= self.min_pool_size:
                         for update_itr in range(self.n_updates_per_sample):
                             # Train policy
                             batch = pool.random_batch(self.batch_size)
-                            oracle_batch = oracle_only_pool.random_batch(self.batch_size)
-                            agent_batch = agent_only_pool.random_batch(self.batch_size)
-                            itrs = self.do_training(itr, batch, oracle_batch, agent_batch)
+                            # oracle_batch = oracle_only_pool.random_batch(self.batch_size)
+                            # agent_batch = agent_only_pool.random_batch(self.batch_size)
+                            itrs = self.do_training(itr, batch)
                             train_qf_itr += itrs[0]
                             train_policy_itr += itrs[1]
                         sample_policy.set_param_values(self.policy.get_param_values())
@@ -286,10 +276,10 @@ class DDPG(RLAlgorithm):
 
                 logger.log("Training finished")
                 logger.log("Trained qf %d steps, policy %d steps"%(train_qf_itr, train_policy_itr))
-                logger.log("Pool sizes agent (%d) oracle (%d)" %(agent_only_pool.size, oracle_only_pool.size))
+                # logger.log("Pool sizes agent (%d) oracle (%d)" %(agent_only_pool.size, oracle_only_pool.size))
 
 
-                if pool.size >= self.min_pool_size and agent_only_pool.size >= self.min_pool_size and oracle_only_pool.size >= self.min_pool_size:
+                if pool.size >= self.min_pool_size:
                     self.evaluate(epoch, pool)
                     params = self.get_epoch_snapshot(epoch)
                     logger.save_itr_params(epoch, params)
@@ -478,7 +468,7 @@ class DDPG(RLAlgorithm):
 
 
 
-    def do_training(self, itr, batch, oracle_batch, agent_batch):
+    def do_training(self, itr, batch):
 
         ###extracting the whole batch here
         obs, actions, rewards, next_obs, terminals = ext.extract(
@@ -527,31 +517,31 @@ class DDPG(RLAlgorithm):
         train_policy_itr = 0
 
 
-        ### extracting agent only batch here
-        obs_agent_only, actions_agent_only, rewards_agent_only, next_obs_agent_only, terminals_agent_only = ext.extract(
-            agent_batch,
-            "observations", "actions", "rewards", "next_observations",
-            "terminals"
-        )
-
-        ### extracting oracle only batch here
-        obs_oracle_only, actions_oracle_only, rewards_oracle_only, next_obs_oracle_only, terminals_oracle_only = ext.extract(
-            oracle_batch,
-            "observations", "actions", "rewards", "next_observations",
-            "terminals"
-        )
+        # ### extracting agent only batch here
+        # obs_agent_only, actions_agent_only, rewards_agent_only, next_obs_agent_only, terminals_agent_only = ext.extract(
+        #     agent_batch,
+        #     "observations", "actions", "rewards", "next_observations",
+        #     "terminals"
+        # )
+        #
+        # ### extracting oracle only batch here
+        # obs_oracle_only, actions_oracle_only, rewards_oracle_only, next_obs_oracle_only, terminals_oracle_only = ext.extract(
+        #     oracle_batch,
+        #     "observations", "actions", "rewards", "next_observations",
+        #     "terminals"
+        # )
 
 
         #### do we need these here?
-        next_actions_agent_only, _ = target_policy.get_actions(next_obs_agent_only)
-        next_qvals_agent_only = target_qf.get_qval(next_obs_agent_only, next_actions_agent_only)
-        ys_agent_only = rewards_agent_only + (1. - terminals_agent_only) * self.discount * next_qvals_agent_only.reshape(-1)
+        # next_actions_agent_only, _ = target_policy.get_actions(next_obs_agent_only)
+        # next_qvals_agent_only = target_qf.get_qval(next_obs_agent_only, next_actions_agent_only)
+        # ys_agent_only = rewards_agent_only + (1. - terminals_agent_only) * self.discount * next_qvals_agent_only.reshape(-1)
 
 
         ### computing targets based on oracle samples
-        next_actions_oracle_only, _ = oracle_policy.get_actions(next_obs_oracle_only)
-        next_qvals_oracle_only = target_qf.get_qval(next_obs_oracle_only, next_actions_oracle_only)
-        ys_oracle_only = rewards_oracle_only + (1. - terminals_oracle_only) * self.discount * next_qvals_oracle_only.reshape(-1)
+        # next_actions_oracle_only, _ = oracle_policy.get_actions(next_obs_oracle_only)
+        # next_qvals_oracle_only = target_qf.get_qval(next_obs_oracle_only, next_actions_oracle_only)
+        # ys_oracle_only = rewards_oracle_only + (1. - terminals_oracle_only) * self.discount * next_qvals_oracle_only.reshape(-1)
 
 
         # gf_loss, gval, _ = self.f_train_gf(obs_oracle_only, actions_oracle_only, ys_oracle_only, ys_agent_only, obs_agent_only, actions_agent_only)
@@ -564,14 +554,14 @@ class DDPG(RLAlgorithm):
         while self.train_policy_itr > 0:
             f_train_policy = self.opt_info["f_train_policy"]
             ### agent samples only here
-            policy_surr, _ , gating_outputs= f_train_policy(obs_agent_only)
+            policy_surr, _ , gating_outputs= f_train_policy(obs)
 
             target_policy.set_param_values(
                 target_policy.get_param_values() * (1.0 - self.soft_target_tau) +
                 self.policy.get_param_values() * self.soft_target_tau)
             self.policy_surr_averages.append(policy_surr)
-            logger.log("Gating outputs")
-            logger.log(gating_outputs)
+            # print("Gating outputs")
+            # print(gating_outputs)
             self.train_policy_itr -= 1
             train_policy_itr += 1
 
