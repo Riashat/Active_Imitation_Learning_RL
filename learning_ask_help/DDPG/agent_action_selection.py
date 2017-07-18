@@ -54,7 +54,6 @@ class AgentStrategy(ExplorationStrategy, Serializable):
 
     @overrides
     def get_action_with_binary(self, t, observation, policy, **kwargs):
-        #action here is from the policy MLP function
         action, binary_action, _ = policy.get_action_with_binary(observation)
         ou_state = self.evolve_state()
 

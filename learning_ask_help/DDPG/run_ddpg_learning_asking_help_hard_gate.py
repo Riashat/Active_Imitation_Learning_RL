@@ -23,8 +23,10 @@ from agent_action_selection import AgentStrategy
 
 from sandbox.rocky.tf.policies.categorical_mlp_policy import CategoricalMLPPolicy
 
-# from sandbox.rocky.tf.q_functions.continuous_mlp_q_function import ContinuousMLPQFunction
 from continuous_mlp_q_function import ContinuousMLPQFunction
+from discrete_mlp_q_function import DiscreteMLPQFunction
+
+
 
 from sandbox.rocky.tf.envs.base import TfEnv
 from rllab.envs.gym_env import GymEnv
@@ -100,6 +102,11 @@ oracle_qf = ContinuousMLPQFunction(env_spec=env.spec,
 
 
 
+with tf.variable_scope("target_gate_qf"):
+   gate_qf = DiscreteMLPQFunction(env_spec=env.spec,
+                           hidden_sizes=(100,100),
+                           hidden_nonlinearity=tf.nn.relu,)
+
 
 
 ddpg_type = {"oracle" : Oracle_DDPG, "agent" : Agent_DDPG }
@@ -109,7 +116,6 @@ oracle_ddpg_class = ddpg_type[args.oracle]
 agent_ddpg_class = ddpg_type[args.agent]
 
 
-## loops:
 num_experiments = 1
 batch_size_values = [64]
 
@@ -160,13 +166,13 @@ for b in range(len(batch_size_values)):
         """
         Agent policy
         """
-
         algo = agent_ddpg_class(
             env=env,
             policy=policy,
             oracle_policy=oracle_policy, 
             agent_strategy=agent_strategy,
             qf=qf,
+            gate_qf=gate_qf,
             batch_size=batch_size_values[b],
             max_path_length=env.horizon,
             epoch_length=1000,
