@@ -227,9 +227,16 @@ class DDPG(RLAlgorithm):
 
                     ### both continuous
                     agent_action, binary_action = self.agent_strategy.get_action_with_binary(itr, observation, policy=sample_policy)  # qf=qf)
+<<<<<<< HEAD
 
                     # import pdb; pdb.set_trace()
                     # print ("Binary action", binary_action)
+=======
+                    sigma = np.round(binary_action)
+                    # print(sigma)
+
+                    ### getting actons from the oracle policy
+>>>>>>> 12a87535de057660b3d6f963266f80e866725c3e
 
                     sigma = np.round(binary_action)
                     oracle_action = self.get_oracle_action(itr, observation, policy=oracle_policy)
@@ -257,6 +264,10 @@ class DDPG(RLAlgorithm):
                     observation = next_observation
 
                     if pool.size >= self.min_pool_size:
+<<<<<<< HEAD
+=======
+                    # if pool.size >= self.min_pool_size:
+>>>>>>> 12a87535de057660b3d6f963266f80e866725c3e
                         for update_itr in range(self.n_updates_per_sample):
                             # Train policy
                             batch = pool.random_batch(self.batch_size)
@@ -391,6 +402,7 @@ class DDPG(RLAlgorithm):
             deterministic=True
         )
 
+<<<<<<< HEAD
 
         # policy_surr_gate = -tf.reduce_mean(policy_qval_gate)
 
@@ -410,7 +422,30 @@ class DDPG(RLAlgorithm):
             mean0, var0 = tf.nn.moments(gating_network, axes=[0])
             mean, var1 = tf.nn.moments(gating_network, axes=[1])
             lambda_v_loss = - lambda_v * (tf.reduce_mean(var0) + tf.reduce_mean(var1))
+=======
+>>>>>>> 12a87535de057660b3d6f963266f80e866725c3e
 
+        # policy_surr_gate = -tf.reduce_mean(policy_qval_gate)
+
+        combined_losses = tf.concat([tf.reshape(policy_qval_novice, [-1, 1]), tf.reshape(policy_qval_oracle, [-1, 1])], axis=1)
+
+        combined_loss = -tf.reduce_mean(tf.reshape(tf.reduce_mean(combined_losses * gating_network, axis=1), [-1, 1]), axis=0)
+
+        lambda_s_loss = tf.constant(0.0)
+
+        if lambda_s > 0.0:
+            lambda_s_loss = lambda_s * (tf.reduce_mean((tf.reduce_mean(gating_network, axis=0) - tau)**2) +
+                                    tf.reduce_mean((tf.reduce_mean(gating_network, axis=1) - tau)**2))
+
+        lambda_v_loss = tf.constant(0.0)
+
+        if lambda_v > 0.0:
+            mean0, var0 = tf.nn.moments(gating_network, axes=[0])
+            mean, var1 = tf.nn.moments(gating_network, axes=[1])
+            lambda_v_loss = - lambda_v * (tf.reduce_mean(var0) + tf.reduce_mean(var1))
+        policy_surr = combined_loss
+
+        policy_reg_surr = combined_loss + policy_weight_decay_term + lambda_s_loss + lambda_v_loss
 
         policy_surr = combined_loss
 
@@ -483,6 +518,14 @@ class DDPG(RLAlgorithm):
 
 
         """
+<<<<<<< HEAD
+=======
+        TO DO : Should we also use the
+        binary actions from beta(s) here?
+        """
+
+        """
+>>>>>>> 12a87535de057660b3d6f963266f80e866725c3e
         Using samples from both oracle and target policy here
         """
         ## using only the continuous actions here
@@ -549,7 +592,11 @@ class DDPG(RLAlgorithm):
         while self.train_policy_itr > 0:
             f_train_policy = self.opt_info["f_train_policy"]
             ### agent samples only here
+<<<<<<< HEAD
             policy_surr, _ , gating_outputs = f_train_policy(obs)
+=======
+            policy_surr, _ , gating_outputs= f_train_policy(obs)
+>>>>>>> 12a87535de057660b3d6f963266f80e866725c3e
 
             target_policy.set_param_values(
                 target_policy.get_param_values() * (1.0 - self.soft_target_tau) +
@@ -692,4 +739,8 @@ class DDPG(RLAlgorithm):
 
         print([str(i.name) for i in not_initialized_vars]) # only for testing
         if len(not_initialized_vars):
+<<<<<<< HEAD
             sess.run(tf.variables_initializer(not_initialized_vars))
+=======
+            sess.run(tf.variables_initializer(not_initialized_vars))
+>>>>>>> 12a87535de057660b3d6f963266f80e866725c3e

@@ -87,7 +87,10 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
     def vectorized(self):
         return True
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 12a87535de057660b3d6f963266f80e866725c3e
     @overrides
     def get_action(self, observation):
         flat_obs = self.observation_space.flatten(observation)
@@ -131,12 +134,19 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
         oracle_policy_sym = L.get_output(self.oracle_policy.prob_network.output_layer, obs_var)
         return tf.stop_gradient(oracle_policy_sym)
 
+<<<<<<< HEAD
 
     def get_action_binary_gate_sym(self, obs_var):
         return L.get_output(self.prob_network.output_layer_binary, obs_var)
 
 
 
+=======
+    ## obs_var here is oracle_samples_only
+    def get_action_binary_gate_sym(self, obs_var):
+        return L.get_output(self.prob_network.output_layer_binary, obs_var)
+
+>>>>>>> 12a87535de057660b3d6f963266f80e866725c3e
     def get_novice_policy_sym(self, obs_var):
         return L.get_output(self.prob_network.output_layer, obs_var)
         #
@@ -151,9 +161,13 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
         # ### we dont want to train pi(s) with the oracle samples
         # return tf.stop_gradient() * (out_bin) + (1.0-out_bin) * tf.stop_gradient(oracle_policy_sym)
 
+<<<<<<< HEAD
 
 
 
+=======
+    #
+>>>>>>> 12a87535de057660b3d6f963266f80e866725c3e
     # ## obs_var here is agent_samples only
     # def get_action_sym(self, obs_var):
     #
