@@ -1,8 +1,5 @@
 from oracle_ddpg import DDPG as Oracle_DDPG
 
-#for training the gating 
-#from agent_ddpg_active_rl import DDPG as Agent_DDPG
-
 #for training the gating function with Q-learning
 from agent_ddpg_active_rl_gating_Qlearning import DDPG as Agent_DDPG
 
@@ -12,11 +9,8 @@ from rllab.envs.normalized_env import normalize
 from rllab.misc.instrument import stub, run_experiment_lite
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from sandbox.rocky.tf.policies.deterministic_mlp_policy import DeterministicMLPPolicy
-
-
-
 from hierarchical_deterministic_mlp_policy import LayeredDeterministicMLPPolicy
-#from trial_mlp import LayeredDeterministicMLPPolicy
+
 
 
 from agent_action_selection import AgentStrategy
@@ -102,11 +96,15 @@ oracle_qf = ContinuousMLPQFunction(env_spec=env.spec,
 
 
 
-with tf.variable_scope("target_gate_qf"):
-   gate_qf = DiscreteMLPQFunction(env_spec=env.spec,
-                           hidden_sizes=(100,100),
-                           hidden_nonlinearity=tf.nn.relu,)
+# with tf.variable_scope("target_gate_qf"):
+#    gate_qf = DiscreteMLPQFunction(env_spec=env.spec,
+#                            hidden_sizes=(100,100),
+#                            hidden_nonlinearity=tf.nn.relu,)
 
+
+gate_qf = DiscreteMLPQFunction(env_spec=env.spec,
+                    hidden_sizes=(100,100),
+                    hidden_nonlinearity=tf.nn.relu,)
 
 
 ddpg_type = {"oracle" : Oracle_DDPG, "agent" : Agent_DDPG }

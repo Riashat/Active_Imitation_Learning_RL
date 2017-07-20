@@ -82,10 +82,6 @@ class DiscreteMLPQFunction(QFunction, LayersPowered, Serializable):
         binary_one = np.array([actions[:, 0]]).T
         binary_two = np.array([actions[:, 1]]).T
 
-
-        import pdb; pdb.set_trace()
-
-
         q_val_one = self._f_qval(observations, binary_one)
         q_val_two = self._f_qval(observations, binary_two)
 

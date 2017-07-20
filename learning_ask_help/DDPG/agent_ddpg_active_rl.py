@@ -227,16 +227,8 @@ class DDPG(RLAlgorithm):
 
                     ### both continuous
                     agent_action, binary_action = self.agent_strategy.get_action_with_binary(itr, observation, policy=sample_policy)  # qf=qf)
-<<<<<<< HEAD
 
-                    # import pdb; pdb.set_trace()
-                    # print ("Binary action", binary_action)
-=======
-                    sigma = np.round(binary_action)
-                    # print(sigma)
-
-                    ### getting actons from the oracle policy
->>>>>>> 12a87535de057660b3d6f963266f80e866725c3e
+                    print ("Binary_Action", binary_action)
 
                     sigma = np.round(binary_action)
                     oracle_action = self.get_oracle_action(itr, observation, policy=oracle_policy)
@@ -264,10 +256,7 @@ class DDPG(RLAlgorithm):
                     observation = next_observation
 
                     if pool.size >= self.min_pool_size:
-<<<<<<< HEAD
-=======
-                    # if pool.size >= self.min_pool_size:
->>>>>>> 12a87535de057660b3d6f963266f80e866725c3e
+
                         for update_itr in range(self.n_updates_per_sample):
                             # Train policy
                             batch = pool.random_batch(self.batch_size)
@@ -310,22 +299,16 @@ class DDPG(RLAlgorithm):
         with tf.variable_scope("target_policy"):
             target_policy = Serializable.clone(self.policy)
 
-        # with tf.variable_scope("oracle_policy"):
-        #     oracle_policy = Serializable.clone(self.oracle_policy)
-
         oracle_policy = self.oracle_policy
 
         with tf.variable_scope("target_qf"):
             target_qf = Serializable.clone(self.qf)
 
-
-        # y need to be computed first
         obs = self.obs = self.env.observation_space.new_tensor_variable(
             'obs',
             extra_dims=1,
         )
-        # The yi values are computed separately as above and then passed to
-        # the training functions below
+
         action = self.env.action_space.new_tensor_variable(
             'action',
             extra_dims=1,
@@ -402,8 +385,6 @@ class DDPG(RLAlgorithm):
             deterministic=True
         )
 
-<<<<<<< HEAD
-
         # policy_surr_gate = -tf.reduce_mean(policy_qval_gate)
 
         combined_losses = tf.concat([tf.reshape(policy_qval_novice, [-1, 1]), tf.reshape(policy_qval_oracle, [-1, 1])], axis=1)
@@ -422,15 +403,12 @@ class DDPG(RLAlgorithm):
             mean0, var0 = tf.nn.moments(gating_network, axes=[0])
             mean, var1 = tf.nn.moments(gating_network, axes=[1])
             lambda_v_loss = - lambda_v * (tf.reduce_mean(var0) + tf.reduce_mean(var1))
-=======
->>>>>>> 12a87535de057660b3d6f963266f80e866725c3e
+
+
 
         # policy_surr_gate = -tf.reduce_mean(policy_qval_gate)
-
         combined_losses = tf.concat([tf.reshape(policy_qval_novice, [-1, 1]), tf.reshape(policy_qval_oracle, [-1, 1])], axis=1)
-
         combined_loss = -tf.reduce_mean(tf.reshape(tf.reduce_mean(combined_losses * gating_network, axis=1), [-1, 1]), axis=0)
-
         lambda_s_loss = tf.constant(0.0)
 
         if lambda_s > 0.0:
@@ -443,19 +421,14 @@ class DDPG(RLAlgorithm):
             mean0, var0 = tf.nn.moments(gating_network, axes=[0])
             mean, var1 = tf.nn.moments(gating_network, axes=[1])
             lambda_v_loss = - lambda_v * (tf.reduce_mean(var0) + tf.reduce_mean(var1))
-        policy_surr = combined_loss
 
-        policy_reg_surr = combined_loss + policy_weight_decay_term + lambda_s_loss + lambda_v_loss
 
         policy_surr = combined_loss
-
         policy_reg_surr = combined_loss + policy_weight_decay_term + lambda_s_loss + lambda_v_loss
-
         gf_input_list = [obs_oracle, action_oracle, yvar_oracle] + qf_input_list
 
 
         # self.gating_func_update_method.update_opt(gf_loss, target=target_policy.output_layer_binary, inputs=gf_input_list)
-
         # self.f_train_gf = tensor_utils.compile_function(
         #     inputs=gf_input_list,
         #     outputs=[gf_loss, self.gating_func_update_method._train_op],
@@ -474,20 +447,10 @@ class DDPG(RLAlgorithm):
         )
 
 
-        """
-        For Training only the target policy component pi(s)
-        """
         f_train_policy = tensor_utils.compile_function(
             inputs=policy_input_list,
             outputs=[policy_surr, self.policy_update_method._train_op, gating_network],
         )
-
-
-
-        # f_train_policy_gate = tensor_utils.compile_function(
-        #     inputs=policy_input_list,
-        #     outputs=[policy_surr_gate, self.policy_update_method._train_op],
-        # )
 
         self.opt_info = dict(
             f_train_qf=f_train_qf,
@@ -516,16 +479,7 @@ class DDPG(RLAlgorithm):
         #oracle Policy
         oracle_policy = self.opt_info["oracle_policy"]
 
-
         """
-<<<<<<< HEAD
-=======
-        TO DO : Should we also use the
-        binary actions from beta(s) here?
-        """
-
-        """
->>>>>>> 12a87535de057660b3d6f963266f80e866725c3e
         Using samples from both oracle and target policy here
         """
         ## using only the continuous actions here
@@ -592,18 +546,14 @@ class DDPG(RLAlgorithm):
         while self.train_policy_itr > 0:
             f_train_policy = self.opt_info["f_train_policy"]
             ### agent samples only here
-<<<<<<< HEAD
+
             policy_surr, _ , gating_outputs = f_train_policy(obs)
-=======
-            policy_surr, _ , gating_outputs= f_train_policy(obs)
->>>>>>> 12a87535de057660b3d6f963266f80e866725c3e
 
             target_policy.set_param_values(
                 target_policy.get_param_values() * (1.0 - self.soft_target_tau) +
                 self.policy.get_param_values() * self.soft_target_tau)
             self.policy_surr_averages.append(policy_surr)
-            # print("Gating outputs")
-            # print(gating_outputs)
+
             self.train_policy_itr -= 1
             train_policy_itr += 1
 
@@ -736,11 +686,7 @@ class DDPG(RLAlgorithm):
         global_vars          = tf.global_variables()
         is_not_initialized   = sess.run([tf.is_variable_initialized(var) for var in global_vars])
         not_initialized_vars = [v for (v, f) in zip(global_vars, is_not_initialized) if not f]
-
         print([str(i.name) for i in not_initialized_vars]) # only for testing
         if len(not_initialized_vars):
-<<<<<<< HEAD
             sess.run(tf.variables_initializer(not_initialized_vars))
-=======
-            sess.run(tf.variables_initializer(not_initialized_vars))
->>>>>>> 12a87535de057660b3d6f963266f80e866725c3e
+

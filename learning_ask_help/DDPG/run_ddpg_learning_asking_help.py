@@ -1,10 +1,7 @@
 from oracle_ddpg import DDPG as Oracle_DDPG
 
 #for training the gating 
-#from agent_ddpg_active_rl import DDPG as Agent_DDPG
-
-#for training the gating function with Q-learning
-from agent_ddpg_active_rl_gating_Qlearning import DDPG as Agent_DDPG
+from agent_ddpg_active_rl import DDPG as Agent_DDPG
 
 
 # from rllab.envs.box2d.cartpole_env import CartpoleEnv
@@ -18,12 +15,9 @@ from sandbox.rocky.tf.policies.deterministic_mlp_policy import DeterministicMLPP
 from hierarchical_deterministic_mlp_policy import LayeredDeterministicMLPPolicy
 #from trial_mlp import LayeredDeterministicMLPPolicy
 
-
 from agent_action_selection import AgentStrategy
 
 from sandbox.rocky.tf.policies.categorical_mlp_policy import CategoricalMLPPolicy
-
-# from sandbox.rocky.tf.q_functions.continuous_mlp_q_function import ContinuousMLPQFunction
 from continuous_mlp_q_function import ContinuousMLPQFunction
 
 from sandbox.rocky.tf.envs.base import TfEnv

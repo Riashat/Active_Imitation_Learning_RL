@@ -38,18 +38,13 @@ class AgentStrategy(ExplorationStrategy, Serializable):
     def reset(self):
         self.state = np.ones(self.action_space.flat_dim) * self.mu
 
+
     def evolve_state(self):
         x = self.state
         dx = self.theta * (self.mu - x) + self.sigma * nr.randn(len(x))
         self.state = x + dx
         return self.state
 
-    # @overrides
-    # def get_action(self, t, observation, policy, **kwargs):
-    #     #action here is from the policy MLP function
-    #     action, _ = policy.get_action(observation)
-    #     ou_state = self.evolve_state()
-    #     return np.clip(action + ou_state, self.action_space.low, self.action_space.high)
 
 
     @overrides
@@ -61,6 +56,7 @@ class AgentStrategy(ExplorationStrategy, Serializable):
         continuous_action = np.clip(action + ou_state, self.action_space.low, self.action_space.high)
 
         return continuous_action, binary_action
+
 
     @overrides
     def get_action(self, t, observation, policy, **kwargs):
