@@ -126,9 +126,6 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
         return L.get_output(self.prob_network.output_layer_binary, obs_var)
 
 
-    def get_action_binary_gate_sym(self, obs_var):
-        return L.get_output(self.prob_network.output_layer_binary, obs_var)
-
     def get_novice_policy_sym(self, obs_var):
         return L.get_output(self.prob_network.output_layer, obs_var)
         #

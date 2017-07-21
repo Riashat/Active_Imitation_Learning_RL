@@ -88,17 +88,15 @@ def agent_train(algo, oracle_policy, sess=None,):
             #use multiple rollouts/trajectories to obtain samples for TRPO
             logger.log("Obtaining samples...")
 
-            #obtain_samples - implemented in vectorized sampler
-            # paths = algo.obtain_samples(itr, oracle_policy, env_modified_action_space)
-
-            paths, agent_only_paths, oracle_only_paths = algo.obtain_samples(itr, oracle_policy)
+            #paths, agent_only_paths, oracle_only_paths = algo.obtain_samples(itr, oracle_policy)
+            paths, agent_only_paths = algo.obtain_samples(itr, oracle_policy)
 
             logger.log("Processing samples...")
 
-            #process_samples - in batch_polopt - from there in #tf.samplers.batch_sampler
+
             samples_data = algo.process_samples(itr, paths)
-            agent_samples_data = algo.process_samples(itr, agent_only_paths)
-            oracle_samples_data = algo.process_samples(itr, oracle_only_paths)
+            agent_samples_data = algo.process_agent_samples(itr, agent_only_paths)
+
 
 
             logger.log("Logging diagnostics...")
@@ -106,8 +104,19 @@ def agent_train(algo, oracle_policy, sess=None,):
 
             logger.log("Optimizing policy...")
 
-            #optimize_policy - in npo_active.py
-            algo.optimize_policy(itr, samples_data, agent_samples_data, oracle_samples_data)
+
+            """
+            TO DO:
+
+            Split this into two
+            - optimize_policy for pi(s)
+            - optimize policy for gating function beta(s)
+            """
+            ### optimising pi(s) with agent samples data only
+            algo.optimize_agent_policy(itr, agent_samples_data)
+
+            ### optimising beta(s) with all samples
+            algo.optimize_policy(itr, samples_data)
 
 
             logger.log("Saving snapshot...")

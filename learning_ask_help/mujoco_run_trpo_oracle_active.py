@@ -45,10 +45,6 @@ gymenv = GymEnv(args.envs, force_reset=True, record_video=False, record_log=Fals
 env = TfEnv(gymenv)
 
 
-# if args.envs == "Hopper-v1":
-#     env_modified_action_space = 1000
-
-
 """
 ORACLE POLICY
 """
@@ -84,8 +80,6 @@ num_final_rollouts = 10
 batch_size_value = 5000
 step_size_value = 0.01
 regularisation_coefficient = 1e-5
-
-
 
 
 with tf.Session() as sess:

@@ -317,7 +317,7 @@ class DDPG(RLAlgorithm):
         )
 
         discrete_action = tensor_utils.new_tensor(
-            discrete_action,
+            'discrete_action',
             ndim=2,
             dtype=tf.float32,
         )
@@ -509,9 +509,6 @@ class DDPG(RLAlgorithm):
             # self.policy_surr_averages.append(policy_surr)
             self.train_gate_policy_itr -= 1
             train_gate_policy_itr += 1
-
-
-
 
 
         return 1, train_policy_itr # number of itrs qf, policy are trained

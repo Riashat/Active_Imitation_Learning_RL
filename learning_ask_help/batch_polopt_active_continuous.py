@@ -108,6 +108,10 @@ class BatchPolopt(RLAlgorithm):
     def process_samples(self, itr, paths):
         return self.sampler.process_samples(itr, paths)
 
+    def process_agent_samples(self, itr, agent_only_paths):
+        return self.sampler.process_samples(itr, agent_only_paths)
+
+
     def train(self, sess=None):
 
         sess = self.sess
@@ -128,19 +132,24 @@ class BatchPolopt(RLAlgorithm):
                 logger.log("Collecting both agent and oracle samples...")
                 # paths = self.obtain_samples(itr, self.oracle_policy, env_action_space)
 
-                import pdb; pdb.set_trace()
-
-                paths = self.obtain_samples(itr, self.oracle_policy)
+                paths, agent_only_paths = self.obtain_samples(itr, self.oracle_policy)
 
                 logger.log("Processing samples...")
                 samples_data = self.process_samples(itr, paths)
 
+
+                agent_samples_data = self.process_agent_samples(itr, agent_only_paths)
+
+
                 logger.log("Logging diagnostics...")
                 self.log_diagnostics(paths)
+                self.log_diagnostics(agent_only_paths)
 
                 #### optimising the policy based on the collected samples
-                logger.log("Optimizing policy...")
+                logger.log("Optimizing policy...")                
+                self.optimize_agent_policy(itr, agent_samples_data)
                 self.optimize_policy(itr, samples_data)
+
                 logger.log("Saving snapshot...")
 
                 params = self.get_itr_snapshot(itr, samples_data)  # , **kwargs)
@@ -185,4 +194,9 @@ class BatchPolopt(RLAlgorithm):
 
     def optimize_policy(self, itr, samples_data):
         raise NotImplementedError
+
+    def optimize_agent_policy(self, itr, agent_samples_data):
+        raise NotImplementedError
+
+
 

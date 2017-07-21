@@ -7,6 +7,9 @@ from sandbox.rocky.tf.core.parameterized import Parameterized
 from sandbox.rocky.tf.core.layers_powered import LayersPowered
 
 
+"""
+Need to make changes to the network directly here
+"""
 class HierarchicalMLP(LayersPowered, Serializable):
     def __init__(self, name, output_dim, output_dim_binary, hidden_sizes, hidden_nonlinearity,
                  output_nonlinearity, output_nonlinearity_binary, hidden_W_init=L.XavierUniformInitializer(), hidden_b_init=tf.zeros_initializer(),
@@ -87,11 +90,11 @@ class HierarchicalMLP(LayersPowered, Serializable):
             if batch_normalization:
                 l_out = L.batch_norm(l_out)
 
-
             self._layers.append(l_out)
             self._l_in = l_in
 
             self._l_out = l_out
+            
             self._l_out_binary = l_out_binary
 
             self._output_binary = L.get_output(l_out_binary)

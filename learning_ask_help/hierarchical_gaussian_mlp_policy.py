@@ -2,6 +2,7 @@ import numpy as np
 from sandbox.rocky.tf.core.layers_powered import LayersPowered
 import sandbox.rocky.tf.core.layers as L
 from sandbox.rocky.tf.core.network import MLP
+
 from hierarchical_MLP import HierarchicalMLP
 
 from sandbox.rocky.tf.spaces.box import Box
@@ -9,6 +10,11 @@ from sandbox.rocky.tf.spaces.box import Box
 from rllab.core.serializable import Serializable
 from sandbox.rocky.tf.policies.base import StochasticPolicy
 from sandbox.rocky.tf.distributions.diagonal_gaussian import DiagonalGaussian
+from sandbox.rocky.tf.distributions.categorical import Categorical
+from sandbox.rocky.tf.distributions.bernoulli import Bernoulli
+
+
+
 from rllab.misc.overrides import overrides
 from rllab.misc import logger
 from sandbox.rocky.tf.misc import tensor_utils
@@ -139,7 +145,15 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
             self._l_mean = l_mean
             self._l_std_param = l_std_param
 
+            
+            #Gaussian for pi(s)
             self._dist = DiagonalGaussian(action_dim)
+
+            ## TODO
+            #Bernoulli or Caregorical for beta(s)?
+            self._discrete_dist = DiagonalGaussian(action_dim)
+
+
 
             #originally here!!!!
             LayersPowered.__init__(self, [l_mean, l_std_param])
@@ -168,6 +182,7 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
     def vectorized(self):
         return True
 
+    ### for pi(s) continuous component
     def dist_info_sym(self, obs_var, state_info_vars=None):
         mean_var, std_param_var = L.get_output([self._l_mean, self._l_std_param], obs_var)
         if self.min_std_param is not None:
@@ -185,7 +200,6 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
 
     @overrides
     def get_action(self, observation):
-
         flat_obs = self.observation_space.flatten(observation)
         mean, log_std = [x[0] for x in self._f_dist([flat_obs])]
         rnd = np.random.normal(size=mean.shape)
@@ -194,16 +208,30 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
         return action, dict(mean=mean, log_std=log_std)
 
 
+    @overrides
+    def get_binary_action(self, observation):
+        flat_obs = self.observation_space.flatten(observation)
+        binary_action = self._f_prob_binary([flat_obs])
+
+        return binary_action
+
 
     def get_actions(self, observations):
-        
         flat_obs = self.observation_space.flatten_n(observations)
-        means, log_stds = self._f_dist(flat_obs)
-        binary_action = self._f_prob_binary(observations)        
+        means, log_stds = self._f_dist(flat_obs)      
         rnd = np.random.normal(size=means.shape)
         actions = rnd * np.exp(log_stds) + means
+        binary_actions = self._f_prob_binary(observations)        
 
-        return actions, binary_action, dict(mean=means, log_std=log_stds)
+        return actions, binary_actions, dict(mean=means, log_std=log_stds)
+
+
+    # def get_binary_actions(self, observations):
+    #     flat_obs = self.observation_space.flatten_n(observations)
+    #     binary_action = self._f_prob_binary(observations)        
+
+
+    #     return binary_actions
 
 
 
@@ -231,3 +259,8 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
     @property
     def distribution(self):
         return self._dist
+
+
+    @property
+    def discrete_distribution(self):
+        return self._discrete_dist

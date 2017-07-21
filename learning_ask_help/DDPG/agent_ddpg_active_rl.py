@@ -228,8 +228,6 @@ class DDPG(RLAlgorithm):
                     ### both continuous
                     agent_action, binary_action = self.agent_strategy.get_action_with_binary(itr, observation, policy=sample_policy)  # qf=qf)
 
-                    print ("Binary_Action", binary_action)
-
                     sigma = np.round(binary_action)
                     oracle_action = self.get_oracle_action(itr, observation, policy=oracle_policy)
 
