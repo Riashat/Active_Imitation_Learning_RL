@@ -69,6 +69,9 @@ class VectorizedSampler(BaseSampler):
             ## [ 0.49935448]], dtype=float32)
             agent_actions, binary_actions, agent_infos = policy.get_actions(obses)
 
+            print ("Binary Actions", binary_actions)
+
+
             sigma = np.round(binary_actions)
             oracle_actions, oracle_agent_infos = oracle_policy.get_actions(obses)
 

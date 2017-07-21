@@ -97,6 +97,7 @@ with tf.Session() as sess:
 
     oracle_train(oracle_algo, sess=sess)
 
+
     # rollouts = oracle_algo.obtain_samples(num_epochs + 1)
     #logger.log("Average reward for training rollouts on (%s): %f +- %f " % (env_name, np.mean([np.sum(p['rewards']) for p in rollouts]),  np.std([np.sum(p['rewards']) for p in rollouts])))
 
@@ -143,8 +144,7 @@ with tf.Session() as sess:
         step_size=step_size_value,
         gae_lambda=1.0,
         optimizer=ConjugateGradientOptimizer(reg_coeff=regularisation_coefficient, hvp_approach=FiniteDifferenceHvp(base_eps=regularisation_coefficient))
-    )
-    #agent_train(algo, env_modified_action_space=env_modified_action_space, oracle_policy=oracle_policy, sess=sess )    
+    ) 
     agent_train(algo, oracle_policy=oracle_policy, sess=sess )    
 
     # """
