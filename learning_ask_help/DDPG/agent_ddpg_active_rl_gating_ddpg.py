@@ -209,7 +209,7 @@ class DDPG(RLAlgorithm):
                         initial = False
 
                     ### both continuous actions
-                    ### binary_action is continuous here - but with regularizers, 
+                    ### binary_action is continuous here - but with regularizers,
                     ### it will be approximated as a discrete action
                     agent_action, binary_action = self.agent_strategy.get_action_with_binary(itr, observation, policy=sample_policy)  # qf=qf)
                     sigma = np.round(binary_action)
@@ -630,4 +630,3 @@ class DDPG(RLAlgorithm):
         print([str(i.name) for i in not_initialized_vars]) # only for testing
         if len(not_initialized_vars):
             sess.run(tf.variables_initializer(not_initialized_vars))
-

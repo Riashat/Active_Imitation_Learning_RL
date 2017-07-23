@@ -88,6 +88,7 @@ class DDPG(RLAlgorithm):
         self.policy = policy
         self.oracle_policy = oracle_policy
         self.qf = qf
+        self.discrete_qf = gate_qf
         self.gate_qf = gate_qf
         self.agent_strategy = agent_strategy
         self.batch_size = batch_size
@@ -158,6 +159,7 @@ class DDPG(RLAlgorithm):
         self.scale_reward = scale_reward
 
         self.train_policy_itr = 0
+        self.train_gate_policy_itr = 0
 
         self.opt_info = None
 
@@ -183,7 +185,7 @@ class DDPG(RLAlgorithm):
             binary_pool = SimpleReplayPool(
                 max_pool_size=self.replay_pool_size,
                 observation_dim=self.env.observation_space.flat_dim,
-                action_dim=self.env.action_space.flat_dim,
+                action_dim=2,
                 replacement_prob=self.replacement_prob,
             )
 
@@ -202,7 +204,7 @@ class DDPG(RLAlgorithm):
             with tf.variable_scope("sample_policy"):
                 sample_policy = Serializable.clone(self.policy)
 
-            with tf.variable_scope("target_gate_qf"):
+            with tf.variable_scope("sample_target_gate_qf"):
                 target_gate_qf = Serializable.clone(self.gate_qf)
 
 
@@ -233,7 +235,7 @@ class DDPG(RLAlgorithm):
 
 
                     agent_action, binary_action = self.agent_strategy.get_action_with_binary(itr, observation, policy=sample_policy)  # qf=qf)
-                    
+
                     sigma = np.round(binary_action)
                     oracle_action = self.get_oracle_action(itr, observation, policy=oracle_policy)
 
@@ -252,7 +254,7 @@ class DDPG(RLAlgorithm):
 
                     else:
                         pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
-                        binary_pool.add_sample(observation, action, reward * self.scale_reward, terminal, initial)
+                        binary_pool.add_sample(observation, binary_action, reward * self.scale_reward, terminal, initial)
 
                     observation = next_observation
 
@@ -342,6 +344,10 @@ class DDPG(RLAlgorithm):
             deterministic=True
         )
 
+        # import pdb; pdb.set_trace()
+
+        # import pdb; pdb.set_trace()
+
         policy_qval_gate = self.discrete_qf.get_qval_sym(
            obs, self.policy.get_action_binary_gate_sym(obs),
            deterministic=True
@@ -388,7 +394,7 @@ class DDPG(RLAlgorithm):
             loss=policy_reg_surr, target=self.policy, inputs=policy_input_list)
 
         self.policy_gate_update_method.update_opt(
-            loss=policy_reg_gate_surr, target=gating_network, inputs=policy_gate_input_list)
+            loss=policy_reg_gate_surr, target=self.policy, inputs=policy_gate_input_list)
 
 
 
@@ -405,8 +411,8 @@ class DDPG(RLAlgorithm):
 
         f_train_policy = tensor_utils.compile_function(
            inputs=policy_input_list,
-           outputs=[policy_surr, self.policy_update_method._train_op, target_policy],
-        )    
+           outputs=[policy_surr, self.policy_update_method._train_op],
+        )
 
         f_train_policy_gate = tensor_utils.compile_function(
            inputs=policy_gate_input_list,
@@ -439,8 +445,8 @@ class DDPG(RLAlgorithm):
 
         binary_obs, binary_actions, binary_rewards, binary_next_obs, binary_terminals = ext.extract(
             binary_batch,
-            "binary_observations", "binary_actions", "binary_rewards", "binary_next_observations",
-            "binary_terminals"
+            "observations", "actions", "rewards", "next_observations",
+            "terminals"
         )
 
 
@@ -472,7 +478,7 @@ class DDPG(RLAlgorithm):
         while self.train_policy_itr > 0:
             f_train_policy = self.opt_info["f_train_policy"]
             #policy_surr, _ , gating_outputs = f_train_policy(obs)
-            policy_surr, _ , _ = f_train_policy(obs)
+            policy_surr, _ = f_train_policy(obs)
             target_policy.set_param_values(
                 target_policy.get_param_values() * (1.0 - self.soft_target_tau) +
                 self.policy.get_param_values() * self.soft_target_tau)
@@ -484,12 +490,13 @@ class DDPG(RLAlgorithm):
         """
         Training the gate function with Q-learning here
         """
+        # import pdb; pdb.set_trace()
         next_binary_actions, _ = target_policy.get_binary_actions(next_obs)
 
         ### TO DO HERE
         ##compute Q values for the binary actions and the target Q network max_a (Q)
         ## get_max_qval to return max_a (Q)
-        next_max_qvals = target_gate_qf.get_max_qval(next_obs, next_binary_actions)
+        next_max_qvals = target_gate_qf.get_max_qval(next_obs)
         ys_discrete_qf = binary_rewards + (1. - terminals) * self.discount * next_max_qvals.reshape(-1)
 
         f_train_discrete_qf = self.opt_info["f_train_discrete_qf"]

@@ -1,97 +1,121 @@
 from sandbox.rocky.tf.q_functions.base import QFunction
-from rllab.core.serializable import Serializable
-from rllab.misc import ext
-
-from sandbox.rocky.tf.core.layers_powered import LayersPowered
-from sandbox.rocky.tf.core.network import MLP
-from sandbox.rocky.tf.core.layers import batch_norm
-from sandbox.rocky.tf.distributions.categorical import Categorical
-from sandbox.rocky.tf.policies.base import StochasticPolicy
-from sandbox.rocky.tf.misc import tensor_utils
-
-import tensorflow as tf
 import sandbox.rocky.tf.core.layers as L
-import numpy as np
-
+import tensorflow as tf
+from rllab.core.serializable import Serializable
+from sandbox.rocky.tf.core.layers_powered import LayersPowered
+from sandbox.rocky.tf.misc import tensor_utils
+from sandbox.rocky.tf.policies.base import StochasticPolicy
 
 class DiscreteMLPQFunction(QFunction, LayersPowered, Serializable):
     def __init__(
             self,
             env_spec,
+            name='qnet',
             hidden_sizes=(32, 32),
             hidden_nonlinearity=tf.nn.relu,
             action_merge_layer=-2,
             output_nonlinearity=None,
+            # hidden_W_init=L.XavierUniformInitializer(),
+            # hidden_b_init=L.ZerosInitializer(),
+            # output_W_init=L.XavierUniformInitializer(),
+            # output_b_init=L.ZerosInitializer(),
+            c=1.0, # temperature variable for stochastic policy
             bn=False):
         Serializable.quick_init(self, locals())
 
-        l_obs = L.InputLayer(shape=(None, env_spec.observation_space.flat_dim), name="obs")
-        l_action = L.InputLayer(shape=(None, env_spec.action_space.flat_dim), name="actions")
+        # assert env_spec.action_space.is_discrete
+        self._n = 2
+        self._c = c
+        self._env_spec = env_spec
 
-        n_layers = len(hidden_sizes) + 1
+        with tf.variable_scope(name):
+            l_obs = L.InputLayer(shape=(None, env_spec.observation_space.flat_dim), name="obs")
+            l_action = L.InputLayer(shape=(None, 2), var_type=tf.uint8, name="actions")
 
-        if n_layers > 1:
-            action_merge_layer = \
-                (action_merge_layer % n_layers + n_layers) % n_layers
-        else:
-            action_merge_layer = 1
+            n_layers = len(hidden_sizes) + 1
 
-        l_hidden = l_obs
+            l_hidden = l_obs
 
-        for idx, size in enumerate(hidden_sizes):
-            if bn:
-                l_hidden = batch_norm(l_hidden)
+            for idx, size in enumerate(hidden_sizes):
+                if bn:
+                    l_hidden = L.batch_norm(l_hidden)
 
-            if idx == action_merge_layer:
-                l_hidden = L.ConcatLayer([l_hidden, l_action])
+                l_hidden = L.DenseLayer(
+                    l_hidden,
+                    num_units=size,
+                    # W=hidden_W_init,
+                    # b=hidden_b_init,
+                    nonlinearity=hidden_nonlinearity,
+                    name="h%d" % (idx + 1)
+                )
 
-            l_hidden = L.DenseLayer(
+            l_output_vec = L.DenseLayer(
                 l_hidden,
-                num_units=size,
-                nonlinearity=hidden_nonlinearity,
-                name="h%d" % (idx + 1)
+                num_units=2,
+                # W=output_W_init,
+                # b=output_b_init,
+                nonlinearity=output_nonlinearity,
+                name="output"
             )
 
-        if action_merge_layer == n_layers:
-            l_hidden = L.ConcatLayer([l_hidden, l_action])
+            output_vec_var = L.get_output(l_output_vec, deterministic=True)
 
-        l_output = L.DenseLayer(
-            l_hidden,
-            num_units=1,
-            nonlinearity=output_nonlinearity,
-            name="output"
-        )
+            output_var = tf.reduce_sum(output_vec_var*tf.to_float(l_action.input_var), 1)
 
-        output_var = L.get_output(l_output, deterministic=True)
+            self._f_qval = tensor_utils.compile_function([l_obs.input_var, l_action.input_var], output_var)
+            self._f_qval_vec = tensor_utils.compile_function([l_obs.input_var], output_vec_var)
+            self._output_vec_layer = l_output_vec
+            self._obs_layer = l_obs
+            self._action_layer = l_action
+            self._output_nonlinearity = output_nonlinearity
 
-        self._f_qval = tensor_utils.compile_function([l_obs.input_var, l_action.input_var], output_var)
-        self._output_layer = l_output
-        self._obs_layer = l_obs
-        self._action_layer = l_action
-        self._output_nonlinearity = output_nonlinearity
+            self.init_policy()
 
-        LayersPowered.__init__(self, [l_output])
+            LayersPowered.__init__(self, [l_output_vec])
+
+    def init_policy(self):
+        pass
 
     def get_qval(self, observations, actions):
         return self._f_qval(observations, actions)
 
-
-    ### TO DO here
-    def get_max_qval(self, observations, actions):
-
-        binary_one = np.array([actions[:, 0]]).T
-        binary_two = np.array([actions[:, 1]]).T
-
-        q_val_one = self._f_qval(observations, binary_one)
-        q_val_two = self._f_qval(observations, binary_two)
-
-        return self._f_qval(observations, actions)
-
-
-    def get_qval_sym(self, obs_var, action_var, **kwargs):
-        qvals = L.get_output(
-            self._output_layer,
-            {self._obs_layer: obs_var, self._action_layer: action_var},
+    def _get_qval_sym(self, obs_var, action_var, **kwargs):
+        output_vec = L.get_output(
+            self._output_vec_layer,
+            {self._obs_layer: obs_var},
             **kwargs
         )
-        return tf.reshape(qvals, (-1,))
+        return tf.reduce_sum(output_vec * tf.to_float(action_var), 1), output_vec
+
+    def get_qval_sym(self, obs_var, action_var, **kwargs):
+        return self._get_qval_sym(obs_var, action_var, **kwargs)[0]
+
+    def get_e_qval(self, observations, policy):
+        if isinstance(policy, StochasticPolicy):
+            agent_info = policy.dist_info(observations)
+            action_vec = agent_info['prob']
+        else: raise NotImplementedError
+        output_vec = self._f_qval_vec(observations)
+        qvals = output_vec * action_vec
+        return qvals.sum(axis=1)
+
+    def get_e_qval_sym(self, obs_var, policy, **kwargs):
+        if isinstance(policy, StochasticPolicy):
+            agent_info = policy.dist_info_sym(obs_var)
+            action_vec = agent_info['prob']
+        else: raise NotImplementedError
+        output_vec = L.get_output(
+            self._output_vec_layer,
+            {self._obs_layer: obs_var},
+            **kwargs
+        )
+        return tf.reduce_sum(output_vec * action_vec, 1)
+
+    def get_cv_sym(self, obs_var, action_var, policy, **kwargs):
+        if isinstance(policy, StochasticPolicy):
+            agent_info = policy.dist_info_sym(obs_var)
+            action_vec = agent_info['prob']
+        else: raise NotImplementedError
+        qvals, output_vec = self._get_qval_sym(obs_var, action_var, deterministic=True, **kwargs)
+        vvals = tf.reduce_sum(output_vec * action_vec, 1)
+        return qvals - vvals
