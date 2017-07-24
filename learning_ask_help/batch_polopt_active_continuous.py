@@ -98,9 +98,6 @@ class BatchPolopt(RLAlgorithm):
     def shutdown_worker(self):
         self.sampler.shutdown_worker()
 
-    # def obtain_samples(self, itr, oracle_policy, env_action_space):
-    #     return self.sampler.obtain_samples(itr, oracle_policy, env_action_space)
-
     def obtain_samples(self, itr, oracle_policy):
         return self.sampler.obtain_samples(itr, oracle_policy)
 
@@ -130,14 +127,10 @@ class BatchPolopt(RLAlgorithm):
                 logger.log("Obtaining samples...")
 
                 logger.log("Collecting both agent and oracle samples...")
-                # paths = self.obtain_samples(itr, self.oracle_policy, env_action_space)
-
                 paths, agent_only_paths = self.obtain_samples(itr, self.oracle_policy)
 
                 logger.log("Processing samples...")
-                samples_data = self.process_samples(itr, paths)
-
-
+                samples_data = self.process_samples(itr, paths)  
                 agent_samples_data = self.process_agent_samples(itr, agent_only_paths)
 
 

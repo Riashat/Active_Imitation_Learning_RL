@@ -11,7 +11,7 @@ class AgentStrategy(ExplorationStrategy, Serializable):
     """
     This strategy builds up from the OUStrategy class
     This class decides which action to take - continuous or discrete
-    based on the policy pi(s)
+    based on the policy pi(s) and gating functio  beta(s)
     """
 
     def __init__(self, env_spec, mu=0, theta=0.15, sigma=0.3, **kwargs):

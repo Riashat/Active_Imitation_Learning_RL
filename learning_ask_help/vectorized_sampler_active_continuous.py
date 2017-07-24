@@ -67,10 +67,17 @@ class VectorizedSampler(BaseSampler):
             ## but a soft gate and returns a mixture - 
             ## array([[ 0.49920294],
             ## [ 0.49935448]], dtype=float32)
+            """
+            TO DO here - need discrete binary outputs for binary_actions here 
+            Check the gaussian MLP class
+            """
             agent_actions, binary_actions, agent_infos = policy.get_actions(obses)
 
+            """
+            Hack here
+            """
+            binary_actions = np.array([binary_actions[0,:]]).T
             print ("Binary Actions", binary_actions)
-
 
             sigma = np.round(binary_actions)
             oracle_actions, oracle_agent_infos = oracle_policy.get_actions(obses)

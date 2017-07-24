@@ -35,8 +35,8 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
             min_std=1e-6,
             std_hidden_nonlinearity=tf.nn.tanh,
             hidden_nonlinearity=tf.nn.tanh,
-            output_nonlinearity_binary=tf.nn.sigmoid,
-            output_dim_binary=1,
+            output_nonlinearity_binary=tf.nn.softmax,
+            output_dim_binary=2,
             output_nonlinearity=None,
             mean_network=None,
             std_network=None,
@@ -135,16 +135,8 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
 
             self.min_std_param = min_std_param
 
-            # mean_var, log_std_var = L.get_output([l_mean, l_std_param])
-            #
-            # if self.min_std_param is not None:
-            #     log_std_var = tf.maximum(log_std_var, np.log(min_std))
-            #
-            # self._mean_var, self._log_std_var = mean_var, log_std_var
-
             self._l_mean = l_mean
             self._l_std_param = l_std_param
-
             
             #Gaussian for pi(s)
             self._dist = DiagonalGaussian(action_dim)
@@ -221,17 +213,13 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
         means, log_stds = self._f_dist(flat_obs)      
         rnd = np.random.normal(size=means.shape)
         actions = rnd * np.exp(log_stds) + means
-        binary_actions = self._f_prob_binary(observations)        
+
+        binary_actions = self._f_prob_binary(flat_obs)
+        # binary_actions = self._f_prob_binary(observations)        
 
         return actions, binary_actions, dict(mean=means, log_std=log_stds)
 
 
-    # def get_binary_actions(self, observations):
-    #     flat_obs = self.observation_space.flatten_n(observations)
-    #     binary_action = self._f_prob_binary(observations)        
-
-
-    #     return binary_actions
 
 
 

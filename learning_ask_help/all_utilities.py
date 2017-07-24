@@ -84,38 +84,24 @@ def agent_train(algo, oracle_policy, sess=None,):
         itr_start_time = time.time()
         with logger.prefix('itr #%d | ' % itr):
 
-
             #use multiple rollouts/trajectories to obtain samples for TRPO
             logger.log("Obtaining samples...")
-
-            #paths, agent_only_paths, oracle_only_paths = algo.obtain_samples(itr, oracle_policy)
+            ## obtain samples - for both only agent and all samples (including oracle and agent)
             paths, agent_only_paths = algo.obtain_samples(itr, oracle_policy)
 
+
             logger.log("Processing samples...")
-
-
             samples_data = algo.process_samples(itr, paths)
             agent_samples_data = algo.process_agent_samples(itr, agent_only_paths)
-
 
 
             logger.log("Logging diagnostics...")
             algo.log_diagnostics(paths)
 
             logger.log("Optimizing policy...")
-
-
-            """
-            TO DO:
-
-            Split this into two
-            - optimize_policy for pi(s)
-            - optimize policy for gating function beta(s)
-            """
-            ### optimising pi(s) with agent samples data only
+            ## optimising pi(s) with agent samples data only
             algo.optimize_agent_policy(itr, agent_samples_data)
-
-            ### optimising beta(s) with all samples
+            ## optimising beta(s) with all samples
             algo.optimize_policy(itr, samples_data)
 
 
