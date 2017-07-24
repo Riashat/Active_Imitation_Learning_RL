@@ -18,7 +18,7 @@ from agent_action_selection import AgentStrategy
 from sandbox.rocky.tf.policies.categorical_mlp_policy import CategoricalMLPPolicy
 
 from continuous_mlp_q_function import ContinuousMLPQFunction
-from discrete_mlp_q_function import DiscreteMLPQFunction
+from deterministic_discrete_mlp_q_function import DeterministicDiscreteMLPQFunction
 
 
 
@@ -84,15 +84,17 @@ policy = LayeredDeterministicMLPPolicy(
 
 
 ### agent critic
-qf = ContinuousMLPQFunction(env_spec=env.spec,
-                            hidden_sizes=(100,100),
-                            hidden_nonlinearity=tf.nn.relu,)
+with tf.variable_scope('agent_q_function'):
+    qf = ContinuousMLPQFunction(env_spec=env.spec,
+                                hidden_sizes=(100,100),
+                                hidden_nonlinearity=tf.nn.relu,)
 
 
 ### oracle critic
-oracle_qf = ContinuousMLPQFunction(env_spec=env.spec,
-                            hidden_sizes=(100,100),
-                            hidden_nonlinearity=tf.nn.relu,)
+with tf.variable_scope('oracle_q_function'):
+    oracle_qf = ContinuousMLPQFunction(env_spec=env.spec,
+                                hidden_sizes=(100,100),
+                                hidden_nonlinearity=tf.nn.relu,)
 
 
 
@@ -101,10 +103,10 @@ oracle_qf = ContinuousMLPQFunction(env_spec=env.spec,
 #                            hidden_sizes=(100,100),
 #                            hidden_nonlinearity=tf.nn.relu,)
 
-
-gate_qf = DiscreteMLPQFunction(env_spec=env.spec,
-                    hidden_sizes=(100,100),
-                    hidden_nonlinearity=tf.nn.relu,)
+with tf.variable_scope('gate_q_function'):
+    gate_qf = DeterministicDiscreteMLPQFunction(env_spec=env.spec,
+                        hidden_sizes=(100,100),
+                        hidden_nonlinearity=tf.nn.relu,)
 
 
 ddpg_type = {"oracle" : Oracle_DDPG, "agent" : Agent_DDPG }
@@ -118,8 +120,8 @@ num_experiments = 1
 batch_size_values = [64]
 
 
-for b in range(len(batch_size_values)): 
-    
+for b in range(len(batch_size_values)):
+
     for e in range(num_experiments):
 
         """
@@ -135,7 +137,7 @@ for b in range(len(batch_size_values)):
             max_path_length=env.horizon,
             epoch_length=1000,
             min_pool_size=10000,
-            n_epochs=args.num_epochs,
+            n_epochs=1,
             discount=0.99,
             scale_reward=1.0,
             qf_learning_rate=1e-3,
@@ -160,14 +162,14 @@ for b in range(len(batch_size_values)):
         )
 
 
-        
+
         """
         Agent policy
         """
         algo = agent_ddpg_class(
             env=env,
             policy=policy,
-            oracle_policy=oracle_policy, 
+            oracle_policy=oracle_policy,
             agent_strategy=agent_strategy,
             qf=qf,
             gate_qf=gate_qf,
@@ -198,7 +200,3 @@ for b in range(len(batch_size_values)):
             seed=1,
             plot=args.plot,
         )
-
-
-
-

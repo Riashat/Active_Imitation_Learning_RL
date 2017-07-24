@@ -81,7 +81,7 @@ agent_ddpg_class = ddpg_type["agent"]
 
 
 num_experiments = 1
-    
+
 for e in range(num_experiments):
     """
     Training the oracle policy
@@ -120,14 +120,14 @@ for e in range(num_experiments):
     )
 
 
-    
+
     """
     Agent policy
     """
     algo = agent_ddpg_class(
         env=env,
         policy=policy,
-        oracle_policy=oracle_policy, 
+        oracle_policy=oracle_policy,
         agent_strategy=agent_strategy,
         qf=qf,
         batch_size=64,
@@ -157,7 +157,3 @@ for e in range(num_experiments):
         seed=1,
         plot=args.plot,
     )
-
-
-
-
