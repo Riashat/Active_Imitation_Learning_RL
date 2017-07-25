@@ -63,32 +63,18 @@ class VectorizedSampler(BaseSampler):
             t = time.time()
             policy.reset(dones)
 
-            ## currently binary_actions is NOT a hard date
-            ## but a soft gate and returns a mixture - 
-            ## array([[ 0.49920294],
-            ## [ 0.49935448]], dtype=float32)
-            """
-            TO DO here - need discrete binary outputs for binary_actions here 
-            Check the gaussian MLP class
-            """
             agent_actions, binary_actions, agent_infos = policy.get_actions(obses)
-
-            """
-            Hack here
-            """
-            binary_actions = np.array([binary_actions[0,:]]).T
-            print ("Binary Actions", binary_actions)
-
-            sigma = np.round(binary_actions)
             oracle_actions, oracle_agent_infos = oracle_policy.get_actions(obses)
+            sigma = np.round(binary_actions)
 
-            #take action based on either oracle action or agent action
-            actions = sigma * agent_actions + (1 - sigma) * oracle_actions
+            actions_1 = np.array([sigma[0,0] * agent_actions[0,:] + sigma[0,1] * oracle_actions[0,:]])
+            actions_2 = np.array([sigma[1,0] * agent_actions[1,:] + sigma[1,1] * oracle_actions[1,:]])
+
+            actions = np.concatenate((actions_1, actions_2), axis=0)
 
             policy_time += time.time() - t
             t = time.time()
 
-            # next_obses, rewards, dones, env_infos = self.vec_env.step(actions, itr, env_action_space)
             next_obses, rewards, dones, env_infos = self.vec_env.step(actions, itr)
 
 
@@ -129,7 +115,7 @@ class VectorizedSampler(BaseSampler):
                     running_paths[idx] = None
 
 
-            if sigma[0] == 1. or sigma[1] == 1.:
+            if sigma[0,0] == 1 or sigma[1,0] == 1:
 
                 for idx, observation, action, reward, env_info, agent_info, done in zip(itertools.count(), obses, actions,
                                                                                         rewards, env_infos, agent_infos,

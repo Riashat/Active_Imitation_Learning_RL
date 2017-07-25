@@ -91,6 +91,8 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
 
             if std_network is not None:
                 l_std_param = std_network.output_layer
+                l_std_param_binary = std_network.output_layer_binary
+
 
             else:
                 if adaptive_std:
@@ -124,6 +126,15 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
                         trainable=learn_std,
                     )
 
+                    l_std_param_binary = L.ParamLayer(
+                        mean_network.input_layer,
+                        num_units=action_dim,
+                        param=tf.constant_initializer(init_std_param),
+                        name="output_std_param_binary",
+                        trainable=learn_std,
+                    )
+
+
             self.std_parametrization = std_parametrization
 
             if std_parametrization == 'exp':
@@ -141,13 +152,13 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
             #Gaussian for pi(s)
             self._dist = DiagonalGaussian(action_dim)
 
-            ## TODO
+
             #Bernoulli or Caregorical for beta(s)?
+            """
+            TO DO or CHECK HERE
+            """
             self._discrete_dist = DiagonalGaussian(action_dim)
 
-
-
-            #originally here!!!!
             LayersPowered.__init__(self, [l_mean, l_std_param])
             super(LayeredGaussianMLPPolicy, self).__init__(env_spec)
 
@@ -167,7 +178,7 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
 
             self.output_layer_binary = mean_network.output_layer_binary
             self.binary_output = L.get_output(mean_network.output_layer_binary, deterministic=True)
-
+            self.l_std_param_binary = l_std_param_binary
 
 
     @property
@@ -187,6 +198,25 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
             raise NotImplementedError
         return dict(mean=mean_var, log_std=log_std_var)
 
+
+    """
+    TO DO HERE
+    """
+    ### for beta(s)
+    def discrete_dist_info_sym(self, obs_var, state_info_vars=None):
+
+        #mean_var, std_param_var= L.get_output([self.output_layer_binary, self.l_std_param_binary], obs_var)
+        mean_var, std_param_var = L.get_output([self._l_mean, self._l_std_param], obs_var)
+        
+        if self.min_std_param is not None:
+            std_param_var = tf.maximum(std_param_var, self.min_std_param)
+        if self.std_parametrization == 'exp':
+            log_std_var = std_param_var
+        elif self.std_parametrization == 'softplus':
+            log_std_var = tf.log(tf.log(1. + tf.exp(std_param_var)))
+        else:
+             raise NotImplementedError
+        return dict(mean=mean_var, log_std=log_std_var)
 
 
 
@@ -215,12 +245,8 @@ class LayeredGaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
         actions = rnd * np.exp(log_stds) + means
 
         binary_actions = self._f_prob_binary(flat_obs)
-        # binary_actions = self._f_prob_binary(observations)        
 
         return actions, binary_actions, dict(mean=means, log_std=log_stds)
-
-
-
 
 
 

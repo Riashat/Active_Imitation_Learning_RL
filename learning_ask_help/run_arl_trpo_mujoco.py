@@ -3,11 +3,9 @@ from rllab.misc.instrument import stub, run_experiment_lite
 from rllab.baselines.linear_feature_baseline import LinearFeatureBaseline
 from rllab.envs.gym_env import GymEnv
 from sandbox.rocky.tf.envs.base import TfEnv
-
 # Policies
 from sandbox.rocky.tf.policies.gaussian_mlp_policy import GaussianMLPPolicy
 from shared_gaussian_mlp_policy import LayeredGaussianMLPPolicy
-
 ### TRPO Classes
 from sandbox.rocky.tf.algos.trpo import TRPO as Oracle_TRPO
 from agent_trpo import TRPO
@@ -18,7 +16,6 @@ import rllab.misc.logger as logger
 import pickle
 import os.path as osp
 import numpy as np
-
 from all_utilities import *
 import tensorflow as tf
 import argparse
@@ -51,7 +48,6 @@ ORACLE POLICY
 oracle_policy = GaussianMLPPolicy(
     name="oracle_policy",
     env_spec=env.spec,
-    # The neural network policy should have two hidden layers, each with 32 hidden units.
     hidden_sizes=(100, 50, 25),
     hidden_nonlinearity=tf.nn.relu,
 )

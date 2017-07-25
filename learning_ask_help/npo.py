@@ -70,8 +70,11 @@ class NPO(BatchPolopt):
         dist = self.policy.distribution
 
         ### distribution for beta(s)
-        ### TO DO HERE - it should NOT be a Gaussian Distribution, 
+        ### TO DO HERE - Should it be a Gaussian Distribution, 
         ### but instead for discrete, it shoud be a Binomial or Categorical Distribution?
+        """
+        TO DO HERE
+        """
         discrete_dist = self.policy.discrete_distribution
 
 
@@ -123,12 +126,16 @@ class NPO(BatchPolopt):
         lr = dist.likelihood_ratio_sym(action_var, old_dist_info_vars, dist_info_vars)
 
 
-        ### TO DO HERE : policy.dist_info_sym - NEED TO MAKE FOR DISCRETE IN hierarchical_gaussian_mlp_policy
-        discrete_dist_info_vars = self.policy.dist_info_sym(obs_var, discrete_state_info_vars)
+        """
+        Check this 
+        under shared_gaussian_mlp_policy.py
+        for the discrete_dist_info_sym 
+        """
+        discrete_dist_info_vars = self.policy.discrete_dist_info_sym(obs_var, discrete_state_info_vars)
         discrete_kl = discrete_dist.kl_sym(discrete_old_dist_info_vars, discrete_dist_info_vars)
+
         # Likelihood ratio between policy distribution
         discrete_lr = discrete_dist.likelihood_ratio_sym(discrete_action_var, discrete_old_dist_info_vars, discrete_dist_info_vars)
-
 
 
 

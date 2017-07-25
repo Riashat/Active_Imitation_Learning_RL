@@ -89,11 +89,9 @@ def agent_train(algo, oracle_policy, sess=None,):
             ## obtain samples - for both only agent and all samples (including oracle and agent)
             paths, agent_only_paths = algo.obtain_samples(itr, oracle_policy)
 
-
             logger.log("Processing samples...")
             samples_data = algo.process_samples(itr, paths)
             agent_samples_data = algo.process_agent_samples(itr, agent_only_paths)
-
 
             logger.log("Logging diagnostics...")
             algo.log_diagnostics(paths)
