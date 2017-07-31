@@ -7,7 +7,7 @@ import numpy as np
 from rllab.sampler.stateful_pool import ProgBarCounter
 import rllab.misc.logger as logger
 import itertools
-from sandbox.rocky.tf.envs.vec_env_executor_active import VecEnvExecutor
+from vec_env_executor import VecEnvExecutor
 
 
 class VectorizedSampler(BaseSampler):

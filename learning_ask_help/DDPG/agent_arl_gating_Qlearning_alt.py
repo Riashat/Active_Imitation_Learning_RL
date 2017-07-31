@@ -234,7 +234,7 @@ class DDPG(RLAlgorithm):
                     oracle_action = self.get_oracle_action(itr, observation, policy=oracle_policy)
 
 
-                    action = binary_action * agent_action + (1.0 - binary_action * oracle_action
+                    action = binary_action * agent_action + (1.0 - binary_action) * oracle_action
                     
                     next_observation, reward, terminal, _ = self.env.step(action)
                     path_length += 1

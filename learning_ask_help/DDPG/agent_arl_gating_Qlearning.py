@@ -165,7 +165,7 @@ class DDPG(RLAlgorithm):
             plotter.init_plot(self.env, self.policy)
 
     @overrides
-    def train(self):
+    def train(self, e):
         with tf.Session() as sess:
 
             self.initialize_uninitialized(sess)
@@ -188,6 +188,8 @@ class DDPG(RLAlgorithm):
             self.start_worker()
             self.init_opt()
 
+            num_experiment = e
+
             # This initializes the optimizer parameters
             self.initialize_uninitialized(sess)
             itr = 0
@@ -205,6 +207,12 @@ class DDPG(RLAlgorithm):
 
 
             oracle_policy = self.oracle_policy
+
+            oracle_interaction = 0
+            agent_interaction = 0
+
+            agent_interaction_per_episode = np.zeros(shape=(self.n_epochs))
+            oracle_interaction_per_episode = np.zeros(shape=(self.n_epochs))
 
 
             for epoch in range(self.n_epochs):
@@ -237,6 +245,12 @@ class DDPG(RLAlgorithm):
 
                     action = sigma[0] * agent_action + sigma[1] * oracle_action
 
+                    if sigma[1] == 1.0:
+                        oracle_interaction += 1
+                    elif sigma[0] == 1.0:
+                        agent_interaction += 1
+
+
                     next_observation, reward, terminal, _ = self.env.step(action)
                     path_length += 1
                     path_return += reward
@@ -268,6 +282,18 @@ class DDPG(RLAlgorithm):
 
                     itr += 1
 
+
+                agent_interaction_per_episode[epoch] = agent_interaction
+                oracle_interaction_per_episode[epoch] = oracle_interaction
+                np.save('/Users/Riashat/Documents/PhD_Research/RLLAB/rllab/learning_active_learning/learning_ask_help/DDPG/Oracle_Interactions/oracle_interactons_' + 'exp_' + str(num_experiment) + '.npy', oracle_interaction_per_episode)
+                np.save('/Users/Riashat/Documents/PhD_Research/RLLAB/rllab/learning_active_learning/learning_ask_help/DDPG/Oracle_Interactions/agent_interactions_' + 'exp_' + str(num_experiment) + '.npy', agent_interaction_per_episode)
+                # np.save('/home/ml/rislam4/Documents/RLLAB/rllab/Active_Imitation_Learning/Imitation_Learning_RL/learning_ask_help/DDPG/Oracle_Interactions/oracle_interactons_' + 'exp_' + str(num_experiment) + '.npy', oracle_interaction_per_episode)
+                # np.save('/home/ml/rislam4/Documents/RLLAB/rllab/Active_Imitation_Learning/Imitation_Learning_RL/learning_ask_help/DDPG/Oracle_Interactions/agent_interactions_' + 'exp_' + str(num_experiment) + '.npy', agent_interaction_per_episode)
+
+
+                # logger.record_tabular('Epoch', epoch)
+                logger.record_tabular('Oracle Interactions', oracle_interaction)
+                logger.record_tabular('Agent Interactions', agent_interaction)
 
                 logger.log("Training finished")
                 logger.log("Trained qf %d steps, policy %d steps"%(train_qf_itr, train_policy_itr))
@@ -410,9 +436,6 @@ class DDPG(RLAlgorithm):
            inputs=policy_gate_input_list,
            outputs=[policy_gate_surr, self.policy_gate_update_method._train_op, gating_network],
         )
-
-
-
 
         self.opt_info = dict(
             f_train_qf=f_train_qf,
