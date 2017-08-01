@@ -25,6 +25,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("env", help="The environment name from OpenAIGym environments")
 parser.add_argument("--num_epochs", default=100, type=int)
 parser.add_argument("--plot", action="store_true")
+parser.add_argument("--penalty", default=False, type=bool)
 # parser.add_argument("--data_dir", default="./data/")
 args = parser.parse_args()
 
@@ -87,11 +88,6 @@ agent_ddpg_class = ddpg_type["agent"]
 
 num_experiments = 1
 
-"""
-TO DO :
-Add environment name for saving results
-- run parallely for Hopper and HalfCheetah
-"""
 
 for e in range(num_experiments):
 
@@ -125,7 +121,7 @@ for e in range(num_experiments):
         snapshot_mode="last",
         # Specifies the seed for the experiment. If this is not provided, a random seed
         # will be used
-        exp_name="Active_RL/" + "Hard_Oracle_DDPG/" + "Experiment_" + str(e),
+        exp_name="Active_RL/" + "Hard_Oracle_DDPG/" + "Experiment_" + str(e) + '_' + str(args.env),
         seed=1,
         plot=args.plot,
     )
@@ -155,7 +151,7 @@ for e in range(num_experiments):
 
 
     run_experiment_lite(
-        algo.train(e),
+        algo.train(e, args.env, args.penalty),
         # log_dir=args.data_dir,
         # Number of parallel workers for sampling
         n_parallel=1,
@@ -163,7 +159,7 @@ for e in range(num_experiments):
         snapshot_mode="last",
         # Specifies the seed for the experiment. If this is not provided, a random seed
         # will be used
-        exp_name="Active_RL/" + "Hard_Agent_DDPG/"+ "Experiment_" + str(e),
+        exp_name="Active_RL/" + "Hard_Agent_DDPG/"+ "Experiment_" + str(e) + '_' + str(args.env),
         seed=1,
         plot=args.plot,
     )

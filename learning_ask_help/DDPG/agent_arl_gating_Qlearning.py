@@ -165,7 +165,7 @@ class DDPG(RLAlgorithm):
             plotter.init_plot(self.env, self.policy)
 
     @overrides
-    def train(self, e):
+    def train(self, e, environment_name, penalty):
         with tf.Session() as sess:
 
             self.initialize_uninitialized(sess)
@@ -196,6 +196,10 @@ class DDPG(RLAlgorithm):
             path_return = 0
             terminal = False
             initial = False
+
+            ### assigning query cost here
+            query_cost = 0.9
+
             observation = self.env.reset()
 
             with tf.variable_scope("sample_policy"):
@@ -242,13 +246,19 @@ class DDPG(RLAlgorithm):
 
                     action = sigma[0] * agent_action + sigma[1] * oracle_action
 
+                    next_observation, reward, terminal, _ = self.env.step(action)
+
+                    ## sigma[1] for oracle interaction
                     if sigma[1] == 1.0:
                         oracle_interaction += 1
+                        if penalty == True:
+                            reward = reward - query_cost
+
+                    ## for no oracle interaction
                     elif sigma[0] == 1.0:
                         agent_interaction += 1
 
 
-                    next_observation, reward, terminal, _ = self.env.step(action)
                     path_length += 1
                     path_return += reward
 
@@ -282,13 +292,12 @@ class DDPG(RLAlgorithm):
 
                 agent_interaction_per_episode[epoch] = agent_interaction
                 oracle_interaction_per_episode[epoch] = oracle_interaction
-                np.save('/Users/Riashat/Documents/PhD_Research/RLLAB/rllab/learning_active_learning/learning_ask_help/DDPG/Oracle_Interactions/oracle_interactons_' + 'exp_' + str(num_experiment) + '.npy', oracle_interaction_per_episode)
-                np.save('/Users/Riashat/Documents/PhD_Research/RLLAB/rllab/learning_active_learning/learning_ask_help/DDPG/Oracle_Interactions/agent_interactions_' + 'exp_' + str(num_experiment) + '.npy', agent_interaction_per_episode)
-                # np.save('/home/ml/rislam4/Documents/RLLAB/rllab/Active_Imitation_Learning/Imitation_Learning_RL/learning_ask_help/DDPG/Oracle_Interactions/oracle_interactons_' + 'exp_' + str(num_experiment) + '.npy', oracle_interaction_per_episode)
-                # np.save('/home/ml/rislam4/Documents/RLLAB/rllab/Active_Imitation_Learning/Imitation_Learning_RL/learning_ask_help/DDPG/Oracle_Interactions/agent_interactions_' + 'exp_' + str(num_experiment) + '.npy', agent_interaction_per_episode)
+                np.save('/Users/Riashat/Documents/PhD_Research/RLLAB/rllab/learning_active_learning/learning_ask_help/DDPG/Oracle_Interactions/oracle_interactons_'  + str(environment_name) +  '_' + 'exp_' + str(num_experiment) + '.npy', oracle_interaction_per_episode)
+                np.save('/Users/Riashat/Documents/PhD_Research/RLLAB/rllab/learning_active_learning/learning_ask_help/DDPG/Oracle_Interactions/agent_interactions_'  + str(environment_name) +  '_' + 'exp_' + str(num_experiment) + '.npy', agent_interaction_per_episode)
+                # np.save('/home/ml/rislam4/Documents/RLLAB/rllab/Active_Imitation_Learning/Imitation_Learning_RL/learning_ask_help/DDPG/Oracle_Interactions/oracle_interactons_'  + str(environment_name) +  '_' + 'exp_' + str(num_experiment) + '.npy', oracle_interaction_per_episode)
+                # np.save('/home/ml/rislam4/Documents/RLLAB/rllab/Active_Imitation_Learning/Imitation_Learning_RL/learning_ask_help/DDPG/Oracle_Interactions/agent_interactions_'  + str(environment_name) +  '_' + 'exp_' + str(num_experiment) + '.npy', agent_interaction_per_episode)
 
 
-                # logger.record_tabular('Epoch', epoch)
                 logger.record_tabular('Oracle Interactions', oracle_interaction)
                 logger.record_tabular('Agent Interactions', agent_interaction)
 
@@ -504,8 +513,6 @@ class DDPG(RLAlgorithm):
         Training the gate function with Q-learning here
         """
         next_binary_actions, _ = target_policy.get_binary_actions(next_obs)
-
-        import pdb; pdb.set_trace()
 
         next_max_qvals = target_gate_qf.get_max_qval(next_obs)
         ys_discrete_qf = binary_rewards + (1. - terminals) * self.discount * next_max_qvals.reshape(-1)
