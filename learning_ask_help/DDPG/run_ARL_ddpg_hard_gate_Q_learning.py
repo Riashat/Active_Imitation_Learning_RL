@@ -100,7 +100,7 @@ for e in range(num_experiments):
         max_path_length=env.horizon,
         epoch_length=1000,
         min_pool_size=10000,
-        n_epochs=args.num_epochs,
+        n_epochs=5,
         discount=0.99,
         scale_reward=1.0,
         qf_learning_rate=1e-3,

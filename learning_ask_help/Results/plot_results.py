@@ -5,23 +5,18 @@ import pandas as pd
 from numpy import genfromtxt
 import pdb
 
-eps = range(2991)
-hopper_variance_divide = np.sqrt(5)
-
-
+eps = range(3000)
 
 """
-Gating with Q-Learning
+TRPO results
 """
 
+oracle_data = pd.read_csv("/Users/Riashat/Documents/PhD_Research/RLLAB/rllab/learning_active_learning/learning_ask_help/Results/rllab_results/Active_RL/data/progress.csv")
+agent_data = pd.read_csv("/Users/Riashat/Documents/PhD_Research/RLLAB/rllab/learning_active_learning/learning_ask_help/Results/rllab_results/Active_RL/data/progress_active.csv")
 
-
-oracle_data = pd.read_csv("/Users/Riashat/Documents/PhD_Research/RLLAB/rllab/learning_active_learning/learning_ask_help/DDPG/Results/rllab_results/Active_RL/Hard_Oracle_DDPG/progress.csv")
 oracle = np.array(oracle_data["AverageReturn"])
-
-agent_data = pd.read_csv("/Users/Riashat/Documents/PhD_Research/RLLAB/rllab/learning_active_learning/learning_ask_help/DDPG/Results/rllab_results/Active_RL/Hard_Agent_DDPG/progress.csv")
+oracle = oracle[0:3000]
 agent = np.array(agent_data["AverageReturn"])
-
 
 
 
@@ -56,7 +51,7 @@ def double_plot(stats1, stats2, smoothing_window=100, noshow=False):
 
 def main():
 
-   double_plot(oracle_q, agent_q)
+   double_plot(oracle, agent)
 
 
 

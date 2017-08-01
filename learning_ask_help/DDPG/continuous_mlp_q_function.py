@@ -75,17 +75,6 @@ class ContinuousMLPQFunction(QFunction, LayersPowered, Serializable):
     def get_qval(self, observations, actions):
         return self._f_qval(observations, actions)
 
-    # def get_max_qval(self, observations, actions):
-
-    #     binary_one = np.array([actions[:, 0]]).T
-    #     binary_two = np.array([actions[:, 1]]).T
-
-    #     ### TO DO here
-    #     q_val_one = self._f_qval(observations, binary_one)
-    #     q_val_two = self._f_qval(observations, binary_two)
-
-    #     return self._f_qval(observations, actions)
-
 
     def get_qval_sym(self, obs_var, action_var, **kwargs):
         qvals = L.get_output(

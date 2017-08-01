@@ -190,7 +190,6 @@ class DDPG(RLAlgorithm):
 
             num_experiment = e
 
-            # This initializes the optimizer parameters
             self.initialize_uninitialized(sess)
             itr = 0
             path_length = 0
@@ -205,12 +204,10 @@ class DDPG(RLAlgorithm):
             with tf.variable_scope("sample_target_gate_qf"):
                 target_gate_qf = Serializable.clone(self.gate_qf)
 
-
             oracle_policy = self.oracle_policy
 
             oracle_interaction = 0
             agent_interaction = 0
-
             agent_interaction_per_episode = np.zeros(shape=(self.n_epochs))
             oracle_interaction_per_episode = np.zeros(shape=(self.n_epochs))
 
@@ -237,7 +234,7 @@ class DDPG(RLAlgorithm):
                     else:
                         initial = False
 
-
+                    ## softmax binary output here from Beta(s)
                     agent_action, binary_action = self.agent_strategy.get_action_with_binary(itr, observation, policy=sample_policy)  # qf=qf)
 
                     sigma = np.round(binary_action)
@@ -506,8 +503,9 @@ class DDPG(RLAlgorithm):
         """
         Training the gate function with Q-learning here
         """
-        ## next_binary_actions - probabilities of the binary actions
         next_binary_actions, _ = target_policy.get_binary_actions(next_obs)
+
+        import pdb; pdb.set_trace()
 
         next_max_qvals = target_gate_qf.get_max_qval(next_obs)
         ys_discrete_qf = binary_rewards + (1. - terminals) * self.discount * next_max_qvals.reshape(-1)

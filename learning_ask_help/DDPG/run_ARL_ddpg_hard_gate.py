@@ -85,9 +85,10 @@ oracle_ddpg_class = ddpg_type["oracle"]
 agent_ddpg_class = ddpg_type["agent"]
 
 
-num_experiments = 3
+num_experiments = 1
 
 """
+TO DO :
 Add environment name for saving results
 - run parallely for Hopper and HalfCheetah
 """
@@ -106,7 +107,7 @@ for e in range(num_experiments):
         max_path_length=env.horizon,
         epoch_length=1000,
         min_pool_size=10000,
-        n_epochs=args.num_epochs,
+        n_epochs=5,
         discount=0.99,
         scale_reward=1.0,
         qf_learning_rate=1e-3,

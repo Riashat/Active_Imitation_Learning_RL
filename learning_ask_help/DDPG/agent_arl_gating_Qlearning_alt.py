@@ -232,8 +232,7 @@ class DDPG(RLAlgorithm):
                     agent_action, _ = self.agent_strategy.get_action_with_binary(itr, observation, policy=sample_policy)  # qf=qf)
                     binary_action, _ = self.discrete_qf.get_action(observation)
                     oracle_action = self.get_oracle_action(itr, observation, policy=oracle_policy)
-
-
+                    
                     action = binary_action * agent_action + (1.0 - binary_action) * oracle_action
                     
                     next_observation, reward, terminal, _ = self.env.step(action)
@@ -496,15 +495,15 @@ class DDPG(RLAlgorithm):
         self.train_gate_policy_itr += self.policy_updates_ratio
         train_gate_policy_itr = 0
 
-        while self.train_gate_policy_itr > 0:
-            f_train_policy_gate = self.opt_info["f_train_policy_gate"]
-            policy_surr, _ , gating_outputs = f_train_policy_gate(obs)
-            # target_policy.set_param_values(
-            #     target_policy.get_param_values() * (1.0 - self.soft_target_tau) +
-            #     self.policy.get_param_values() * self.soft_target_tau)
-            self.policy_surr_averages.append(policy_surr)
-            self.train_gate_policy_itr -= 1
-            train_gate_policy_itr += 1
+        # while self.train_gate_policy_itr > 0:
+        #     f_train_policy_gate = self.opt_info["f_train_policy_gate"]
+        #     policy_surr, _ , gating_outputs = f_train_policy_gate(obs)
+        #     # target_policy.set_param_values(
+        #     #     target_policy.get_param_values() * (1.0 - self.soft_target_tau) +
+        #     #     self.policy.get_param_values() * self.soft_target_tau)
+        #     self.policy_surr_averages.append(policy_surr)
+        #     self.train_gate_policy_itr -= 1
+        #     train_gate_policy_itr += 1
 
 
         return 1, train_policy_itr # number of itrs qf, policy are trained

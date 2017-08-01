@@ -1,7 +1,3 @@
-# import lasagne
-# import lasagne.layers as L
-# import lasagne.nonlinearities as NL
-# import lasagne.init as LI
 from rllab.core.serializable import Serializable
 from rllab.misc import ext
 from rllab.misc.overrides import overrides
@@ -63,11 +59,7 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
                 L.get_output(prob_network.output_layer_binary, deterministic=True)
             )
 
-            ## use tf.round here?
-
-
         self.output_layer_binary = prob_network.output_layer_binary
-        #self.output_layer_binary = tf.round(prob_network.output_layer_binary)
 
         self.binary_output = L.get_output(prob_network.output_layer_binary, deterministic=True)
         self.prob_network = prob_network
@@ -78,7 +70,7 @@ class LayeredDeterministicMLPPolicy(Policy, LayersPowered, Serializable):
         # TODO: this doesn't currently work properly in the tf version so we leave out batch_norm
         super(LayeredDeterministicMLPPolicy, self).__init__(env_spec)
         LayersPowered.__init__(self, [prob_network.output_layer, prob_network.output_layer_binary])
-        # LayersPowered.__init__(self, [prob_network.output_layer_binary])
+
 
 
 
