@@ -25,6 +25,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("env", help="The environment name from OpenAIGym environments")
 parser.add_argument("--num_epochs", default=100, type=int)
 parser.add_argument("--plot", action="store_true")
+parser.add_argument("--penalty", default=False, type=bool)
 # parser.add_argument("--data_dir", default="./data/")
 args = parser.parse_args()
 
@@ -83,7 +84,7 @@ oracle_ddpg_class = ddpg_type["oracle"]
 agent_ddpg_class = ddpg_type["agent"]
 
 
-num_experiments = 1
+num_experiments = 3
 
 
 
@@ -100,7 +101,7 @@ for e in range(num_experiments):
         max_path_length=env.horizon,
         epoch_length=1000,
         min_pool_size=10000,
-        n_epochs=5,
+        n_epochs=args.num_epochs,
         discount=0.99,
         scale_reward=1.0,
         qf_learning_rate=1e-3,
@@ -118,7 +119,7 @@ for e in range(num_experiments):
         snapshot_mode="last",
         # Specifies the seed for the experiment. If this is not provided, a random seed
         # will be used
-        exp_name="Active_RL/" + "Hard_Q_Oracle_DDPG/",
+        exp_name="Active_RL/" + "Hard_Q_Oracle_DDPG/" + "Experiment_" + str(e) + '_' + str(args.env),
         seed=1,
         plot=args.plot,
     )
@@ -147,7 +148,7 @@ for e in range(num_experiments):
     )
 
     run_experiment_lite(
-        algo.train(),
+        algo.train(e, args.env, args.penalty),
         # log_dir=args.data_dir,
         # Number of parallel workers for sampling
         n_parallel=1,
@@ -155,7 +156,7 @@ for e in range(num_experiments):
         snapshot_mode="last",
         # Specifies the seed for the experiment. If this is not provided, a random seed
         # will be used
-        exp_name="Active_RL/" + "Hard_Q_Agent_DDPG/",
+        exp_name="Active_RL/" + "Hard_Q_Agent_DDPG/"+ "Experiment_" + str(e) + '_' + str(args.env),
         seed=1,
         plot=args.plot,
     )

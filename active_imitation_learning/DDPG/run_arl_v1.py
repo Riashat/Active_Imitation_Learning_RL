@@ -1,14 +1,18 @@
+"""
+This version - trains the gating function with Q-learning
+"""
 from oracle_ddpg import DDPG as Oracle_DDPG
+
 #for training the gating function with Q-learning
-from agent_arl_gating_Qlearning import DDPG as Agent_DDPG
+from ddpg_q_learning import DDPG as Agent_DDPG
 
 from rllab.envs.normalized_env import normalize
 from rllab.misc.instrument import stub, run_experiment_lite
 from rllab.exploration_strategies.ou_strategy import OUStrategy
 from sandbox.rocky.tf.policies.deterministic_mlp_policy import DeterministicMLPPolicy
-from shared_deterministic_mlp_policy import LayeredDeterministicMLPPolicy
+from shared_deterministic_mlp_policy import SharedDeterministicMLPPolicy
 
-from agent_action_selection import AgentStrategy
+from action_selection import AgentStrategy
 from sandbox.rocky.tf.policies.categorical_mlp_policy import CategoricalMLPPolicy
 from continuous_mlp_q_function import ContinuousMLPQFunction
 from deterministic_discrete_mlp_q_function import DeterministicDiscreteMLPQFunction
@@ -22,11 +26,11 @@ import argparse
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("env", help="The environment name from OpenAIGym environments")
-parser.add_argument("--num_epochs", default=100, type=int)
+parser.add_argument('--env', help='environment ID', default='HalfCheetah-v1')
+parser.add_argument("--num_epochs", default=1000, type=int)
 parser.add_argument("--plot", action="store_true")
 parser.add_argument("--penalty", default=False, type=bool)
-# parser.add_argument("--data_dir", default="./data/")
+parser.add_argument("--data_dir", default="./Results/")
 args = parser.parse_args()
 
 stub(globals())
@@ -40,6 +44,7 @@ env = TfEnv(normalize(gymenv))
 es = OUStrategy(env_spec=env.spec)
 agent_strategy = AgentStrategy(env_spec=env.spec)
 
+
 ### oracle policy
 oracle_policy = DeterministicMLPPolicy(
     env_spec=env.spec,
@@ -50,7 +55,7 @@ oracle_policy = DeterministicMLPPolicy(
 )
 
 ## agent policy
-policy = LayeredDeterministicMLPPolicy(
+policy = SharedDeterministicMLPPolicy(
     env_spec=env.spec,
     name="policy",
     # The neural network policy should have two hidden layers, each with 32 hidden units.
@@ -65,13 +70,13 @@ with tf.variable_scope('agent_q_function'):
                                 hidden_sizes=(100,100),
                                 hidden_nonlinearity=tf.nn.relu,)
 
-
 ### oracle critic
 with tf.variable_scope('oracle_q_function'):
     oracle_qf = ContinuousMLPQFunction(env_spec=env.spec,
                                 hidden_sizes=(100,100),
                                 hidden_nonlinearity=tf.nn.relu,)
 
+### Q function (Discrete) for the Gating Function
 with tf.variable_scope('gate_q_function'):
     gate_qf = DeterministicDiscreteMLPQFunction(env_spec=env.spec,
                         hidden_sizes=(100,100),
@@ -84,11 +89,11 @@ oracle_ddpg_class = ddpg_type["oracle"]
 agent_ddpg_class = ddpg_type["agent"]
 
 
-num_experiments = 1
+num_experiments = 5
+
 
 
 for e in range(num_experiments):
-
     """
     Training the oracle policy
     """
@@ -101,7 +106,7 @@ for e in range(num_experiments):
         max_path_length=env.horizon,
         epoch_length=1000,
         min_pool_size=10000,
-        n_epochs=5,
+        n_epochs=args.num_epochs,
         discount=0.99,
         scale_reward=1.0,
         qf_learning_rate=1e-3,
@@ -119,7 +124,7 @@ for e in range(num_experiments):
         snapshot_mode="last",
         # Specifies the seed for the experiment. If this is not provided, a random seed
         # will be used
-        exp_name="Active_RL/" + "Hard_Oracle_DDPG/" + "Experiment_" + str(e) + '_' + str(args.env),
+        exp_name= args.data_dir + "Active_IML/" + "DDPG_Oracle_v1/" + "Experiment_" + str(e) + '_' + str(args.env),
         seed=1,
         plot=args.plot,
     )
@@ -147,7 +152,6 @@ for e in range(num_experiments):
         plot=args.plot,
     )
 
-
     run_experiment_lite(
         algo.train(e, args.env, args.penalty),
         # log_dir=args.data_dir,
@@ -157,11 +161,7 @@ for e in range(num_experiments):
         snapshot_mode="last",
         # Specifies the seed for the experiment. If this is not provided, a random seed
         # will be used
-        exp_name="Active_RL/" + "Hard_Agent_DDPG/"+ "Experiment_" + str(e) + '_' + str(args.env),
+        exp_name= args.data_dir + "Active_IML/" + "DDPG_Agent_v1/"+ "Experiment_" + str(e) + '_' + str(args.env),
         seed=1,
         plot=args.plot,
     )
-
-
-
-    ###using experiment_lite here

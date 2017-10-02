@@ -1,0 +1,28 @@
+"Towards Active Imitation Learning -
+Abstract: Reinforcement learning has seen significant progress recently, solving complex tasks such as Atari games and Go. When combined with deep learning, model-free methods are able to learn directly from high-dimensional observations with a scalar reward. However, learning only from this often sparse reinforcement signal requires a sample complexity that is prohibitively high for direct application to robotic problems. Alternatively, imitation learning can significantly reduce the sample complexity by imitating the actions of a teacher. However, imitation learning can suffer from having suboptimal teachers and their supervision is usually expensive. In practice, we are often willing to solicit some (possibly suboptimal) supervision in exchange for shorter training time. In this work, we propose a novel framework for integrating \textit{reinforcement and supervision} by introducing a \textit{query action}. Our framework extends the reinforcement learning framework by allowing student agents to \textit{actively seek} supervision from a teacher in the form of primitive actions. Furthermore, we add an explicit query cost when querying the teacher, which allows for a trade-off between sample complexity and the cost of teacher supervision. In addition, we propose a Q-learning solution based on the options framework."
+
+
+
+
+
+Feedback:
+
+Phil:
+
+
+Question :
+Every time you query for oracle action - and take that action say
+Isn't it like - you are basically taking an action from a different policy rather than your target policy? Making it "off-policy learning" or something?
+
+AnswerL
+not really
+the policy includes oracle querying as an action.
+it's on-policym for certain interpretations of what the policy is
+i.e., if you interpret oracle querying as part of the policy you're training, rather than as something somehow external to the policy, then including the effects of oracle querying is required for keeping things on-policy
+
+
+
+we just have to pay attention to how we train the log probabilities for p(a | s, o) in the factored policy p(a, o | s) = p(a | s, o) * p(o | s)
+we probably don't want to the roll-out rewards to push on those log probabilites on time steps when the oracle was queried (i.e. when o=1)
+
+

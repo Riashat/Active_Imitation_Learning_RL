@@ -262,6 +262,12 @@ class DDPG(RLAlgorithm):
                     path_length += 1
                     path_return += reward
 
+                    """
+                    CHECK THIS - To do here
+                    Discrete binary actions to be added to the replay buffer
+                    Not the binary action probabilities
+                    """
+                    binary_action = sigma
 
                     if not terminal and path_length >= self.max_path_length:
                         terminal = True
@@ -319,8 +325,6 @@ class DDPG(RLAlgorithm):
                                   "continue...")
             self.env.terminate()
             self.policy.terminate()
-
-
 
 
 
@@ -471,7 +475,6 @@ class DDPG(RLAlgorithm):
             "terminals"
         )
 
-
         target_qf = self.opt_info["target_qf"]
         target_gate_qf = self.opt_info["target_gate_qf"]
         target_policy = self.opt_info["target_policy"]
@@ -512,7 +515,7 @@ class DDPG(RLAlgorithm):
         """
         Training the gate function with Q-learning here
         """
-        next_binary_actions, _ = target_policy.get_binary_actions(next_obs)
+        # next_binary_actions, _ = target_policy.get_binary_actions(next_obs)
 
         next_max_qvals = target_gate_qf.get_max_qval(next_obs)
         ys_discrete_qf = binary_rewards + (1. - terminals) * self.discount * next_max_qvals.reshape(-1)
